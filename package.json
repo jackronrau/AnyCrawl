@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "AnyCrawl",
   "private": true,
   "scripts": {
     "build": "turbo run build",
