@@ -158,14 +158,6 @@ export class CheerioEngine extends BaseEngine {
         }
 
         try {
-            // Set up autoscaled pool options to keep running
-            this.options.autoscaledPoolOptions = {
-                isFinishedFunction: async () => {
-                    // Keep running until explicitly stopped
-                    return false;
-                }
-            };
-
             log.info('Starting crawler engine...');
             await this.engine.run();
             log.info('Crawler engine started successfully');

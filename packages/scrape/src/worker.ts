@@ -1,72 +1,64 @@
-import { CheerioEngine } from "./engines/Cheerio.js";
-import { CheerioCrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
+
 import { QueueManager, WorkerManager } from "./queue/index.js";
 import { Job } from "bullmq";
-import { randomUUID } from "node:crypto";
+import { EngineQueueManager, AVAILABLE_ENGINES } from "./Manager.js";
+import { log } from "crawlee";
 
-// Initialize the request queue
-const requestQueue = await RequestQueueV2.open('scrape_queue');
-log.info('Request queue initialized');
 
-// Initialize the CheerioEngine with default settings
-const engine = new CheerioEngine({
-    maxConcurrency: 50,
-    maxRequestRetries: 1,
-    requestHandlerTimeoutSecs: 30,
-    requestQueue: requestQueue,
-    autoscaledPoolOptions: {
-        isFinishedFunction: async () => false
-    },
-    failedRequestHandler: (context: CheerioCrawlingContext<Dictionary>) => {
-        const { request, error } = context;
-        log.error(`Request ${request.url} failed with error: ${error}`);
-    }
-});
+const queueManager = EngineQueueManager.getInstance();
+
+// Initialize queues and engines
+log.info('Initializing queues and engines...');
+await queueManager.initializeQueues();
+await queueManager.initializeEngines();
+await queueManager.startEngines();
+log.info('All queues and engines initialized and started');
 
 // Initialize the application
 (async () => {
     try {
-        log.info('Initializing engine...');
-        await engine.init();
-        log.info('Engine initialized successfully');
-
         // Start the worker to handle new URLs
         log.info('Starting worker...');
         await Promise.all([
             WorkerManager.getInstance().getWorker('scrape', async (job: Job) => {
-                log.info(`Processing scraping job for URL: ${job.data.url}`);
-                await requestQueue.addRequest({
-                    url: job.data.url,
-                    uniqueKey: randomUUID().toString() + '-' + job.data.url,
-                });
-                log.info(`Added URL to queue: ${job.data.url}`);
+                const engineType = job.data.engine || 'cheerio';
+                if (!AVAILABLE_ENGINES.includes(engineType)) {
+                    throw new Error(`Unsupported engine type: ${engineType}`);
+                }
+                log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
+
+                await queueManager.addRequest(engineType, job.data.url);
             }),
         ]);
         log.info('Worker started successfully');
 
-        // Check queue status periodically
+        // Check queue status periodically for all engines
         setInterval(async () => {
-            try {
-                const queueInfo = await requestQueue.getInfo();
-                if (queueInfo) {
-                    log.info(`Queue status - requests: ${queueInfo.pendingRequestCount}, handled: ${queueInfo.handledRequestCount}`);
+            for (const engineType of AVAILABLE_ENGINES) {
+                try {
+                    const queueInfo = await queueManager.getQueueInfo(engineType);
+                    if (queueInfo) {
+                        log.info(`Queue status for ${engineType} - requests: ${queueInfo.pendingRequestCount}, handled: ${queueInfo.handledRequestCount}`);
+                    }
+                } catch (error) {
+                    log.error(`Error checking queue status for ${engineType}: ${error}`);
                 }
-            } catch (error) {
-                log.error(`Error checking queue status: ${error}`);
             }
         }, 3000); // Check every 3 seconds
 
-        // Start the crawler in the background
-        log.info('Starting crawler...');
-        engine.run().catch(error => {
-            log.error(`Error in crawler: ${error}`);
-        });
-        log.info('Crawler started in background');
-
         // Handle graceful shutdown
         process.on('SIGINT', async () => {
-            log.info('Received SIGINT signal, stopping crawler...');
-            await engine.stop();
+            log.info('Received SIGINT signal, stopping all crawlers...');
+            // Temporarily disable console.warn to prevent the pause message
+            const originalWarn = console.warn;
+            console.warn = () => { };
+
+            // Stop all engines
+            await queueManager.stopEngines();
+
+            // Restore console.warn
+            console.warn = originalWarn;
+
             process.exit(0);
         });
 
