@@ -21,7 +21,6 @@
         "typescript": "5.8.2"
     },
     "dependencies": {
-        "@types/bull": "^4.10.4",
         "bull": "^4.16.5",
         "bullmq": "^5.45.1",
         "crawlee": "^3.13.0",
