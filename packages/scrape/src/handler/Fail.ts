@@ -46,11 +46,5 @@ export class FailHandler {
     ): Promise<void> {
         log.error(`Task ${taskId} failed with error: ${error.message}`);
         // move to fail
-        await this.queue.moveToFailed({
-            message: error.message,
-            stack: error.stack,
-            data: data,
-            failedAt: new Date().toISOString()
-        });
     }
 }

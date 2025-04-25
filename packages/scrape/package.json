@@ -4,8 +4,8 @@
     "scripts": {
         "dev": "tsc --watch",
         "build": "tsc",
-        "start:dev": "tsx src/worker.ts",
-        "test": "tsx src/test.ts"
+        "start:dev": "tsx src/Worker.ts",
+        "test": "tsx src/Test.ts"
     },
     "exports": {
         "./*": "./src/*.tsx"
