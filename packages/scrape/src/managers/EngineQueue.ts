@@ -51,7 +51,7 @@ export class EngineQueueManager {
                         maxRequestRetries: 1,
                         requestHandlerTimeoutSecs: 30,
                         requestQueue: queue,
-                        failedRequestHandler: (context: CrawlingContext<Dictionary>) => {
+                        failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
                             const { request, error } = context;
                             log.error(`Request ${request.url} failed with error: ${error}`);
                         }

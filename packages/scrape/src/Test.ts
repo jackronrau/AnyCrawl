@@ -28,9 +28,7 @@ let jobid = await QueueManager.getInstance().addJob('scrape', {
     url: 'https://www.producthunt.com/',
     engine: 'cheerio'
 });
-await sleep(5000)
-console.log(jobid)
 console.log('Waiting for job to complete...');
-console.log(await QueueManager.getInstance().getJobStatus('scrape', jobid));
-console.log(await QueueManager.getInstance().getJobContent(jobid));
+const data = await QueueManager.getInstance().waitJobDone('scrape', jobid);
+console.log(data);
 process.exit(0);

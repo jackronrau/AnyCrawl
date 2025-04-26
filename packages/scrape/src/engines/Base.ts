@@ -1,7 +1,8 @@
-import { Configuration, KeyValueStore } from "crawlee";
+import { Configuration, KeyValueStore, log } from "crawlee";
 import { join } from "path";
 import { RequestQueue, BrowserCrawlingContext, CheerioCrawlingContext, PlaywrightCrawlingContext, PuppeteerCrawlingContext, Dictionary } from "crawlee";
 import { Utils } from "../Utils.js";
+import { QueueManager, QueueName } from "../managers/Queue.js";
 
 export type CrawlingContext = BrowserCrawlingContext<Dictionary> | CheerioCrawlingContext<Dictionary> | PlaywrightCrawlingContext<Dictionary> | PuppeteerCrawlingContext<Dictionary>;
 
@@ -64,7 +65,44 @@ export abstract class BaseEngine {
         };
     }
 
-    public async doneJob(jobId: string, data: any) {
+    /**
+     * Update the job status to completed and store the data
+     * @param jobId The job ID
+     * @param queueName The queue name
+     * @param data The data to store
+     */
+    public async doneJob(jobId: string, queueName: QueueName, data: any) {
+        // update status to done
+        const job = await QueueManager.getInstance().getJob(queueName, jobId);
+        if (!job) {
+            log.error(`[${queueName}] Job ${jobId} not found in queue.`);
+            return;
+        }
+        job.updateData({
+            ...job.data,
+            status: 'completed',
+            ...data
+        });
         await (await Utils.getInstance().getKeyValueStore()).setValue(jobId, data);
+    }
+
+    /**
+     * Update the job status to failed
+     * @param jobId The job ID
+     * @param queueName The queue name
+     * @param error The error message
+     */
+    public async failedJob(jobId: string, queueName: QueueName, error: string) {
+        // update status to failed
+        const job = await QueueManager.getInstance().getJob(queueName, jobId);
+        if (!job) {
+            log.error(`[${queueName}] Job ${jobId} not found in queue.`);
+            return;
+        }
+        job.updateData({
+            ...job.data,
+            status: 'failed',
+            error
+        });
     }
 }

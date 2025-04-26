@@ -1,4 +1,4 @@
-import { Queue, Worker } from 'bullmq';
+import { Job, Queue, Worker } from 'bullmq';
 import { log } from 'crawlee';
 import { randomUUID } from 'node:crypto';
 import { Utils } from '../Utils.js';
@@ -7,8 +7,10 @@ import { EngineType } from './EngineQueue.js';
 interface requestTask {
     url: string;
     engine: EngineType;
+    queueName?: QueueName;
 }
 
+export type QueueName = 'scrape' | 'crawler';
 export class QueueManager {
     private static instance: QueueManager;
     private queues: Map<string, Queue> = new Map();
@@ -32,7 +34,7 @@ export class QueueManager {
      * @param age How long to keep completed/failed jobs in seconds
      * @returns Queue instance
      */
-    public getQueue(name: string, age: number = 3600): Queue {
+    public getQueue(name: QueueName, age: number = 3600): Queue {
         if (!this.queues.has(name)) {
             const queue = new Queue(name, {
                 connection: Utils.getInstance().getRedisConnection(),
@@ -57,14 +59,26 @@ export class QueueManager {
     }
 
     /**
+     * Get a job from a specific queue
+     * @param queueName Name of the queue
+     * @param jobId ID of the job
+     * @returns Job instance
+     */
+    public getJob(queueName: QueueName, jobId: string): Promise<Job | null> {
+        const queue = this.getQueue(queueName);
+        return queue.getJob(jobId);
+    }
+
+    /**
      * Add a job to a specific queue
      * @param queueName Name of the queue
      * @param data Job data
      */
-    public async addJob(queueName: 'scrape' | 'crawler', data: requestTask): Promise<string> {
+    public async addJob(queueName: QueueName, data: requestTask): Promise<string> {
         const queue = this.getQueue(queueName);
         const jobId = randomUUID();
         log.info(`Adding job to queue ${queueName} with jobId ${jobId}`)
+        data.queueName = queueName;
         await queue.add(queueName, data, {
             jobId,
             attempts: 3,
@@ -81,7 +95,7 @@ export class QueueManager {
      * @param queueName Name of the queue
      * @returns Number of jobs in the queue
      */
-    public async getJobCount(queueName: string): Promise<number> {
+    public async getJobCount(queueName: QueueName): Promise<number> {
         const queue = this.getQueue(queueName);
         const counts = await queue.getJobCounts();
         return (counts.active || 0) + (counts.waiting || 0) + (counts.delayed || 0);
@@ -104,9 +118,8 @@ export class QueueManager {
      * @param jobId ID of the job
      * @returns Job status and data
      */
-    public async getJobStatus(queueName: string, jobId: string): Promise<{ status: string; data: any } | null> {
-        const queue = this.getQueue(queueName);
-        const job = await queue.getJob(jobId);
+    public async getJobStatus(queueName: QueueName, jobId: string): Promise<{ status: string; task_status: string; data: any } | null> {
+        const job = await this.getJob(queueName, jobId);
 
         if (!job) {
             return null;
@@ -115,16 +128,67 @@ export class QueueManager {
         const state = await job.getState();
         return {
             status: state,
+            task_status: job.data.status,
             data: job.data
         };
     }
 
     /**
-     * Get the content of a specific job
+     * Check if a job is done. A job is done if it is completed or failed.
+     * @param queueName Name of the queue
      * @param jobId ID of the job
-     * @returns Job context
+     * @returns True if the job is done, false otherwise
      */
-    public async getJobContent(jobId: string): Promise<any> {
-        return await (await Utils.getInstance().getKeyValueStore()).getValue(jobId);
+    public async isJobDone(queueName: QueueName, jobId: string): Promise<boolean> {
+        const state = await this.getJobStatus(queueName, jobId);
+        return state?.status === 'completed' && (state?.task_status === 'completed' || state?.task_status === 'failed');
+    }
+
+    /**
+     * Get the data of a specific job
+     * @param queueName Name of the queue
+     * @param jobId ID of the job
+     * @returns Job data
+     */
+    public async getJobData(queueName: QueueName, jobId: string): Promise<any> {
+        const job = await this.getJob(queueName, jobId);
+        return job?.data;
+    }
+
+    /**
+     * Wait for a job to be totally completed
+     * @param queueName Name of the queue
+     * @param jobId ID of the job
+     * @param timeout Timeout in seconds
+     * @returns Job data
+     */
+    public async waitJobDone(queueName: QueueName, jobId: string, timeout: number = 30000): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                log.error(`[${queueName}] checkJob: ${jobId} timed out after ${timeout} seconds`);
+                reject(new Error(`Job ${jobId} timed out after ${timeout} seconds`));
+            }, timeout);
+
+            const checkJob = async () => {
+                try {
+                    const isJobDone = await QueueManager.getInstance().isJobDone(queueName, jobId);
+                    if (isJobDone) {
+                        clearTimeout(timeoutId);
+                        const data = await QueueManager.getInstance().getJobData(queueName, jobId);
+                        log.info(`[${queueName}] checkJob: ${jobId} done`);
+                        resolve(data);
+                    } else {
+                        // Add delay between checks to reduce CPU usage
+                        setTimeout(checkJob, 100); // Check every 100ms
+                    }
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    log.error(`[${queueName}] checkJob: ${jobId} failed: ${error}`);
+                    reject(error);
+                }
+            };
+
+            checkJob();
+        });
     }
 }

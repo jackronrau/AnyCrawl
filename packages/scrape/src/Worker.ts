@@ -34,11 +34,13 @@ log.info('All queues and engines initialized and started');
                 log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
                 const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
                     jobId: job.id,
+                    queueName: 'scrape',
                     type: 'scrape'
                 });
                 job.updateData({
+                    ...job.data,
                     uniqueKey,
-                    ...job.data
+                    status: 'processing'
                 });
             }),
         ]);

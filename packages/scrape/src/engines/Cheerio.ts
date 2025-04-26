@@ -52,12 +52,12 @@ export class CheerioEngine extends BaseEngine {
                 metadata,
                 timestamp: new Date().toISOString(),
             };
-            log.info(`Pushing data for ${request.url}, jobId: ${jobId}`);
+            log.info(`[${request.userData['queueName']}] Pushing data for ${request.url}, jobId: ${jobId}`);
             return data;
         };
 
         const defaultFailedRequestHandler = (context: CheerioCrawlingContext<Dictionary>) => {
-            log.error(`Request ${context.request.url} failed`);
+            log.error(`[${context.request.userData['queueName']}] Request ${context.request.url} failed`);
         };
 
         const requestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
@@ -68,19 +68,20 @@ export class CheerioEngine extends BaseEngine {
                 } else {
                     data = await defaultRequestHandler(context);
                 }
-                await this.doneJob(context.request.userData['jobId'], data);
+                await this.doneJob(context.request.userData['jobId'], context.request.userData['queueName'], data);
             } catch (error) {
-                log.error(`Error processing request ${context.request.url}: ${error}`);
+                log.error(`[${context.request.userData['queueName']}] Error processing request ${context.request.url}: ${error}`);
                 throw error;
             }
         };
 
-        const failedRequestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
+        const failedRequestHandler = async (context: CheerioCrawlingContext<Dictionary>, error: Error) => {
             if (this.customFailedRequestHandler) {
                 await this.customFailedRequestHandler(context);
             } else {
                 await defaultFailedRequestHandler(context);
             }
+            await this.failedJob(context.request.userData['jobId'], context.request.userData['queueName'], error.message);
         };
 
         const crawlerOptions = {
