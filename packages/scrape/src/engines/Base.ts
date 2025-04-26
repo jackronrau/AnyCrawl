@@ -10,8 +10,8 @@ export interface EngineOptions {
     maxConcurrency?: number;
     maxRequestRetries?: number;
     requestHandlerTimeoutSecs?: number;
-    requestHandler?: (context: CrawlingContext) => Promise<void>;
-    failedRequestHandler?: (context: CrawlingContext) => void;
+    requestHandler?: (context: CrawlingContext) => Promise<any>;
+    failedRequestHandler?: (context: CrawlingContext) => Promise<any>;
     maxRequestsPerCrawl?: number;
     maxRequestTimeout?: number;
     navigationTimeoutSecs?: number;
@@ -62,5 +62,9 @@ export abstract class BaseEngine {
             requestHandlerTimeoutSecs: 60,
             ...options,
         };
+    }
+
+    public async doneJob(jobId: string, data: any) {
+        await (await Utils.getInstance().getKeyValueStore()).setValue(jobId, data);
     }
 }

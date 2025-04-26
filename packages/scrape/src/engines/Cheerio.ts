@@ -9,8 +9,8 @@ import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from
 export class CheerioEngine extends BaseEngine {
     protected engine: CheerioCrawler | null = null;
     protected isInitialized: boolean = false;
-    protected customRequestHandler?: (context: CheerioCrawlingContext<Dictionary>) => Promise<void>;
-    protected customFailedRequestHandler?: (params: CheerioCrawlingContext<Dictionary>) => void;
+    protected customRequestHandler?: (context: CheerioCrawlingContext<Dictionary>) => Promise<any>;
+    protected customFailedRequestHandler?: (params: CheerioCrawlingContext<Dictionary>) => Promise<any>;
 
     /**
      * Constructor for CheerioEngine
@@ -33,14 +33,27 @@ export class CheerioEngine extends BaseEngine {
         const defaultRequestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
             const { request, $ } = context;
             const jobId = request.userData['jobId'];
+            const metadata = $('meta')
+                .toArray()
+                .reduce<Record<string, string>>((acc, el) => {
+                    const $el = $(el);
+                    const name = $el.attr('name') || $el.attr('property');
+                    const content = $el.attr('content');
+                    if (name && content) {
+                        acc[name] = content;
+                    }
+                    return acc;
+                }, {});
             const data = {
+                job_id: jobId,
                 url: request.url,
                 title: $('title').text(),
-                data: $('body').text(),
+                html: $('html').html(),
+                metadata,
                 timestamp: new Date().toISOString(),
             };
-            await (await Utils.getInstance().getKeyValueStore()).setValue(jobId, data);
             log.info(`Pushing data for ${request.url}, jobId: ${jobId}`);
+            return data;
         };
 
         const defaultFailedRequestHandler = (context: CheerioCrawlingContext<Dictionary>) => {
@@ -49,18 +62,26 @@ export class CheerioEngine extends BaseEngine {
 
         const requestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
             try {
+                let data = {};
                 if (this.customRequestHandler) {
-                    await this.customRequestHandler(context);
+                    data = await this.customRequestHandler(context);
                 } else {
-                    await defaultRequestHandler(context);
+                    data = await defaultRequestHandler(context);
                 }
+                await this.doneJob(context.request.userData['jobId'], data);
             } catch (error) {
                 log.error(`Error processing request ${context.request.url}: ${error}`);
                 throw error;
             }
         };
 
-        const failedRequestHandler = this.customFailedRequestHandler || defaultFailedRequestHandler;
+        const failedRequestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
+            if (this.customFailedRequestHandler) {
+                await this.customFailedRequestHandler(context);
+            } else {
+                await defaultFailedRequestHandler(context);
+            }
+        };
 
         const crawlerOptions = {
             ...this.options,
