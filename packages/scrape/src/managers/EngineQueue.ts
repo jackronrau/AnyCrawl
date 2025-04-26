@@ -1,10 +1,14 @@
 
 import { randomUUID } from "node:crypto";
-import { CheerioEngine } from "./engines/Cheerio.js";
-import { CheerioCrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
+import { CheerioEngine } from "../engines/Cheerio.js";
+import { CrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
+import { Utils } from "../Utils.js";
 
 // Define available engine types
 export const AVAILABLE_ENGINES = ['cheerio'];
+
+// Define engine type
+export type EngineType = typeof AVAILABLE_ENGINES[number];
 
 // Queue manager class to handle all engine queues
 export class EngineQueueManager {
@@ -12,7 +16,8 @@ export class EngineQueueManager {
     private queues: Map<string, RequestQueueV2> = new Map();
     private engines: Map<string, CheerioEngine> = new Map();
 
-    private constructor() { }
+    private constructor() {
+    }
 
     static getInstance(): EngineQueueManager {
         if (!EngineQueueManager.instance) {
@@ -24,9 +29,8 @@ export class EngineQueueManager {
     async initializeQueues(): Promise<void> {
         // Initialize queues for all available engines
         for (const engineType of AVAILABLE_ENGINES) {
-            const queue = await RequestQueueV2.open(`${engineType}_queue`);
+            const queue = await Utils.getInstance().getQueue(engineType);
             this.queues.set(engineType, queue);
-            log.info(`Initialized queue for ${engineType}`);
         }
     }
 
@@ -47,7 +51,7 @@ export class EngineQueueManager {
                         maxRequestRetries: 1,
                         requestHandlerTimeoutSecs: 30,
                         requestQueue: queue,
-                        failedRequestHandler: (context: CheerioCrawlingContext<Dictionary>) => {
+                        failedRequestHandler: (context: CrawlingContext<Dictionary>) => {
                             const { request, error } = context;
                             log.error(`Request ${request.url} failed with error: ${error}`);
                         }
@@ -81,17 +85,19 @@ export class EngineQueueManager {
         }
     }
 
-    async addRequest(engineType: string, url: string): Promise<void> {
+    async addRequest(engineType: string, url: string, userData: object): Promise<string> {
         const queue = this.queues.get(engineType);
         if (!queue) {
             throw new Error(`Queue not found for engine type: ${engineType}`);
         }
-
+        const uniqueKey = randomUUID().toString() + '-' + url
         await queue.addRequest({
             url,
-            uniqueKey: randomUUID().toString() + '-' + url,
+            uniqueKey,
+            userData
         });
         log.info(`Added URL to queue: ${url} for engine: ${engineType}`);
+        return uniqueKey;
     }
 
     async getQueueInfo(engineType: string): Promise<any> {

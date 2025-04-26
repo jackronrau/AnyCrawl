@@ -1,40 +1,12 @@
 import { Queue, Worker } from 'bullmq';
-import IORedis from "ioredis";
 import { log } from 'crawlee';
 import { randomUUID } from 'node:crypto';
+import { Utils } from '../Utils.js';
+import { EngineType } from './EngineQueue.js';
 
-const redisConnection = new IORedis.default(process.env.REDIS_URL!, {
-    maxRetriesPerRequest: null,
-});
-
-export class WorkerManager {
-    private static instance: WorkerManager;
-    private workers: Map<string, Worker> = new Map();
-
-    private constructor() {
-        // Private constructor to enforce singleton pattern
-    }
-
-    public static getInstance(): WorkerManager {
-        if (!WorkerManager.instance) {
-            WorkerManager.instance = new WorkerManager();
-        }
-        return WorkerManager.instance;
-    }
-    public async getWorker(name: string, jobHandler: (job: any) => Promise<void>): Promise<Worker> {
-        if (!this.workers.has(name)) {
-            this.workers.set(name, new Worker(
-                name,
-                async job => {
-                    return await jobHandler(job);
-                },
-                {
-                    connection: redisConnection
-                }
-            ));
-        }
-        return this.workers.get(name)!;
-    }
+interface requestTask {
+    url: string;
+    engine: EngineType;
 }
 
 export class QueueManager {
@@ -42,7 +14,6 @@ export class QueueManager {
     private queues: Map<string, Queue> = new Map();
 
     private constructor() {
-        // Private constructor to enforce singleton pattern
     }
 
     /**
@@ -64,7 +35,7 @@ export class QueueManager {
     public getQueue(name: string, age: number = 3600): Queue {
         if (!this.queues.has(name)) {
             const queue = new Queue(name, {
-                connection: redisConnection,
+                connection: Utils.getInstance().getRedisConnection(),
                 defaultJobOptions: {
                     removeOnComplete: {
                         age: age,
@@ -88,13 +59,13 @@ export class QueueManager {
     /**
      * Add a job to a specific queue
      * @param queueName Name of the queue
-     * @param jobName Name of the job
-     * @param jobId Unique job ID
      * @param data Job data
      */
-    public async addJob(queueName: string, jobName: string, jobId: string, data: any): Promise<void> {
+    public async addJob(queueName: 'scrape' | 'crawler', data: requestTask): Promise<string> {
         const queue = this.getQueue(queueName);
-        await queue.add(jobName, data, {
+        const jobId = randomUUID();
+        log.info(`Adding job to queue ${queueName} with jobId ${jobId}`)
+        await queue.add(queueName, data, {
             jobId,
             attempts: 3,
             backoff: {
@@ -102,6 +73,7 @@ export class QueueManager {
                 delay: 1000,
             }
         });
+        return jobId;
     }
 
     /**
@@ -124,5 +96,35 @@ export class QueueManager {
             log.info(`Queue ${name} closed.`);
         }
         this.queues.clear();
+    }
+
+    /**
+     * Get the status of a specific job
+     * @param queueName Name of the queue
+     * @param jobId ID of the job
+     * @returns Job status and data
+     */
+    public async getJobStatus(queueName: string, jobId: string): Promise<{ status: string; data: any } | null> {
+        const queue = this.getQueue(queueName);
+        const job = await queue.getJob(jobId);
+
+        if (!job) {
+            return null;
+        }
+
+        const state = await job.getState();
+        return {
+            status: state,
+            data: job.data
+        };
+    }
+
+    /**
+     * Get the content of a specific job
+     * @param jobId ID of the job
+     * @returns Job context
+     */
+    public async getJobContent(jobId: string): Promise<any> {
+        return await (await Utils.getInstance().getKeyValueStore()).getValue(jobId);
     }
 }

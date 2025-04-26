@@ -1,17 +1,23 @@
-
-import { QueueManager, WorkerManager } from "./queue/index.js";
+import { WorkerManager } from "./managers/Worker.js";
+import { QueueManager } from "./managers/Queue.js";
 import { Job } from "bullmq";
-import { EngineQueueManager, AVAILABLE_ENGINES } from "./Manager.js";
+import { EngineQueueManager, AVAILABLE_ENGINES } from "./managers/EngineQueue.js";
 import { log } from "crawlee";
+import { Utils } from "./Utils.js";
 
-
-const queueManager = EngineQueueManager.getInstance();
+// Initialize Utils first
+const utils = Utils.getInstance();
+await utils.initializeKeyValueStore();
 
 // Initialize queues and engines
 log.info('Initializing queues and engines...');
-await queueManager.initializeQueues();
-await queueManager.initializeEngines();
-await queueManager.startEngines();
+const engineQueueManager = EngineQueueManager.getInstance();
+await engineQueueManager.initializeQueues();
+await engineQueueManager.initializeEngines();
+await engineQueueManager.startEngines();
+
+// Initialize QueueManager
+QueueManager.getInstance();
 log.info('All queues and engines initialized and started');
 
 // Initialize the application
@@ -26,8 +32,14 @@ log.info('All queues and engines initialized and started');
                     throw new Error(`Unsupported engine type: ${engineType}`);
                 }
                 log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
-
-                await queueManager.addRequest(engineType, job.data.url);
+                const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
+                    jobId: job.id,
+                    type: 'scrape'
+                });
+                job.updateData({
+                    uniqueKey,
+                    ...job.data
+                });
             }),
         ]);
         log.info('Worker started successfully');
@@ -36,7 +48,7 @@ log.info('All queues and engines initialized and started');
         setInterval(async () => {
             for (const engineType of AVAILABLE_ENGINES) {
                 try {
-                    const queueInfo = await queueManager.getQueueInfo(engineType);
+                    const queueInfo = await engineQueueManager.getQueueInfo(engineType);
                     if (queueInfo) {
                         log.info(`Queue status for ${engineType} - requests: ${queueInfo.pendingRequestCount}, handled: ${queueInfo.handledRequestCount}`);
                     }
@@ -54,7 +66,7 @@ log.info('All queues and engines initialized and started');
             console.warn = () => { };
 
             // Stop all engines
-            await queueManager.stopEngines();
+            await engineQueueManager.stopEngines();
 
             // Restore console.warn
             console.warn = originalWarn;

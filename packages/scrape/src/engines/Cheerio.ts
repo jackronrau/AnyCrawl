@@ -1,33 +1,13 @@
-import { BaseEngine } from './Base.js';
-import { CheerioCrawler, log, LogLevel, RequestQueue, CheerioCrawlingContext, Dictionary, CheerioCrawlerOptions } from 'crawlee';
-import { randomUUID } from 'crypto';
-import { join } from 'path';
-
-interface CheerioEngineOptions {
-    minConcurrency?: number;
-    maxConcurrency?: number;
-    maxRequestRetries?: number;
-    requestHandlerTimeoutSecs?: number;
-    requestHandler?: (context: CheerioCrawlingContext<Dictionary>) => Promise<void>;
-    failedRequestHandler?: (params: CheerioCrawlingContext<Dictionary>) => void;
-    maxRequestsPerCrawl?: number;
-    maxRequestTimeout?: number;
-    navigationTimeoutSecs?: number;
-    requestQueueName?: string;
-    requestQueue?: RequestQueue;
-    autoscaledPoolOptions?: {
-        isFinishedFunction: () => Promise<boolean>;
-    };
-}
+import { Utils } from '../Utils.js';
+import { BaseEngine, EngineOptions } from './Base.js';
+import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from 'crawlee';
 
 /**
  * CheerioEngine class for web scraping using Cheerio
  * A lightweight implementation for parsing and extracting data from HTML
  */
 export class CheerioEngine extends BaseEngine {
-    protected options: CheerioEngineOptions = {};
     protected engine: CheerioCrawler | null = null;
-    protected queue: RequestQueue | undefined = undefined;
     protected isInitialized: boolean = false;
     protected customRequestHandler?: (context: CheerioCrawlingContext<Dictionary>) => Promise<void>;
     protected customFailedRequestHandler?: (params: CheerioCrawlingContext<Dictionary>) => void;
@@ -36,26 +16,10 @@ export class CheerioEngine extends BaseEngine {
      * Constructor for CheerioEngine
      * @param options Optional configuration options for the engine
      */
-    constructor(options: CheerioEngineOptions = {}) {
-        super();
-        this.options = options;
+    constructor(options: EngineOptions = {}) {
+        super(options);
         this.customRequestHandler = options.requestHandler;
         this.customFailedRequestHandler = options.failedRequestHandler;
-        this.loadOptions();
-    }
-
-    /**
-     * Load the options for the engine
-     */
-    loadOptions(): void {
-        this.options = {
-            minConcurrency: this.minConcurrency,
-            maxConcurrency: this.maxConcurrency,
-            maxRequestRetries: this.maxRequestRetries,
-            requestHandlerTimeoutSecs: this.requestHandlerTimeoutSecs,
-            requestQueue: this.queue,
-            ...this.options,
-        };
     }
 
     /**
@@ -67,15 +31,16 @@ export class CheerioEngine extends BaseEngine {
         }
 
         const defaultRequestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
-            const { pushData, request, $ } = context;
+            const { request, $ } = context;
+            const jobId = request.userData['jobId'];
             const data = {
                 url: request.url,
                 title: $('title').text(),
                 data: $('body').text(),
                 timestamp: new Date().toISOString(),
             };
-            log.info(`Pushing data for ${request.url}`);
-            await pushData(data);
+            await (await Utils.getInstance().getKeyValueStore()).setValue(jobId, data);
+            log.info(`Pushing data for ${request.url}, jobId: ${jobId}`);
         };
 
         const defaultFailedRequestHandler = (context: CheerioCrawlingContext<Dictionary>) => {
@@ -120,28 +85,6 @@ export class CheerioEngine extends BaseEngine {
             throw new Error('Engine not initialized. Call init() first.');
         }
         return this.engine;
-    }
-
-    /**
-     * Set a custom request handler
-     * @param handler The request handler function
-     */
-    setRequestHandler(handler: (context: CheerioCrawlingContext<Dictionary>) => Promise<void>): void {
-        this.customRequestHandler = handler;
-        if (this.isInitialized) {
-            this.init();
-        }
-    }
-
-    /**
-     * Set a custom failed request handler
-     * @param handler The failed request handler function
-     */
-    setFailedRequestHandler(handler: (params: CheerioCrawlingContext<Dictionary>) => void): void {
-        this.customFailedRequestHandler = handler;
-        if (this.isInitialized) {
-            this.init();
-        }
     }
 
     /**

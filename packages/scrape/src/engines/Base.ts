@@ -1,5 +1,26 @@
-import { Configuration } from "crawlee";
+import { Configuration, KeyValueStore } from "crawlee";
 import { join } from "path";
+import { RequestQueue, BrowserCrawlingContext, CheerioCrawlingContext, PlaywrightCrawlingContext, PuppeteerCrawlingContext, Dictionary } from "crawlee";
+import { Utils } from "../Utils.js";
+
+export type CrawlingContext = BrowserCrawlingContext<Dictionary> | CheerioCrawlingContext<Dictionary> | PlaywrightCrawlingContext<Dictionary> | PuppeteerCrawlingContext<Dictionary>;
+
+export interface EngineOptions {
+    minConcurrency?: number;
+    maxConcurrency?: number;
+    maxRequestRetries?: number;
+    requestHandlerTimeoutSecs?: number;
+    requestHandler?: (context: CrawlingContext) => Promise<void>;
+    failedRequestHandler?: (context: CrawlingContext) => void;
+    maxRequestsPerCrawl?: number;
+    maxRequestTimeout?: number;
+    navigationTimeoutSecs?: number;
+    requestQueueName?: string;
+    requestQueue?: RequestQueue;
+    autoscaledPoolOptions?: {
+        isFinishedFunction: () => Promise<boolean>;
+    };
+}
 
 /**
  * BaseEngine abstract class
@@ -7,96 +28,39 @@ import { join } from "path";
  */
 export abstract class BaseEngine {
     /**
+     * The options for the engine
+     */
+    protected options: EngineOptions = {};
+
+    /**
+     * The request queue for the engine 
+     */
+    protected queue: RequestQueue | undefined = undefined;
+
+    /**
+     * The key-value store for the engine
+     */
+    protected keyValueStore: KeyValueStore | undefined = undefined;
+
+    /**
      * The engine instance used for scraping
      */
     protected abstract engine: any;
 
     /**
-     * Default concurrency settings for crawlers
-     */
-    protected minConcurrency: number = 10;
-    protected maxConcurrency: number = 50;
-    /**
-     * Default retry settings for crawlers
-     */
-    protected maxRequestRetries: number = 2;
-
-    protected requestHandlerTimeoutSecs: number = 60;
-
-    /**
-     * Get the maximum request retries setting
-     * @returns The maximum request retries value
-     */
-    getMaxRequestRetries(): number {
-        return this.maxRequestRetries;
-    }
-
-    /**
-     * Set the maximum request retries setting
-     * @param value The maximum request retries value to set
-     */
-    setMaxRequestRetries(value: number): void {
-        this.maxRequestRetries = value;
-    }
-
-    /**
-     * Get the request handler timeout in seconds
-     * @returns The request handler timeout value in seconds
-     */
-    getRequestHandlerTimeout(): number {
-        return this.requestHandlerTimeoutSecs;
-    }
-
-    /**
-     * Set the request handler timeout in seconds
-     * @param value The request handler timeout value in seconds to set
-     */
-    setRequestHandlerTimeout(value: number): void {
-        this.requestHandlerTimeoutSecs = value;
-    }
-
-    /**
-     * Get the minimum concurrency setting
-     * @returns The minimum concurrency value
-     */
-    getMinConcurrency(): number {
-        return this.minConcurrency;
-    }
-
-    /**
-     * Set the minimum concurrency setting
-     * @param value The minimum concurrency value to set
-     */
-    setMinConcurrency(value: number): void {
-        this.minConcurrency = value;
-    }
-
-    /**
-     * Get the maximum concurrency setting
-     * @returns The maximum concurrency value
-     */
-    getMaxConcurrency(): number {
-        return this.maxConcurrency;
-    }
-
-    /**
-     * Set the maximum concurrency setting
-     * @param value The maximum concurrency value to set
-     */
-    setMaxConcurrency(value: number): void {
-        this.maxConcurrency = value;
-    }
-
-    /**
      * Constructor for BaseEngine
      * Initializes the base engine properties
      */
-    constructor() {
+    constructor(options: EngineOptions = {}) {
         // Base initialization logic
-        const config = Configuration.getGlobalConfig();
-        config.set("storageClientOptions", {
-            localDataDirectory: join(process.cwd(), '../../storage'),
-        });
-    }
+        Utils.getInstance().setStorageDirectory();
 
+        this.options = {
+            minConcurrency: 10,
+            maxConcurrency: 50,
+            maxRequestRetries: 2,
+            requestHandlerTimeoutSecs: 60,
+            ...options,
+        };
+    }
 }
