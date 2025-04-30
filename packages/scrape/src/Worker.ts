@@ -4,6 +4,7 @@ import { Job } from "bullmq";
 import { EngineQueueManager, AVAILABLE_ENGINES } from "./managers/EngineQueue.js";
 import { log } from "crawlee";
 import { Utils } from "./Utils.js";
+import { randomUUID } from "crypto";
 
 // Initialize Utils first
 const utils = Utils.getInstance();
@@ -31,10 +32,12 @@ log.info('All queues and engines initialized and started');
                     throw new Error(`Unsupported engine type: ${engineType}`);
                 }
                 log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
+
                 const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
                     jobId: job.id,
                     queueName: 'scrape',
-                    type: 'scrape'
+                    type: 'scrape',
+                    options: job.data.options || {}
                 });
                 job.updateData({
                     ...job.data,

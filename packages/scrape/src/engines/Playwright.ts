@@ -1,5 +1,6 @@
+import { htmlToMarkdown } from "@repo/libs/html-to-markdown";
 import { BaseEngine, EngineOptions } from "./Base.js";
-import { Dictionary, PlaywrightCrawler, PlaywrightCrawlingContext, RequestQueue, log } from "crawlee";
+import { BrowserName, DeviceCategory, Dictionary, OperatingSystemsName, PlaywrightCrawler, PlaywrightCrawlingContext, RequestQueue, log } from "crawlee";
 
 export class PlaywrightEngine extends BaseEngine {
     protected engine: PlaywrightCrawler | null = null;
@@ -55,6 +56,7 @@ export class PlaywrightEngine extends BaseEngine {
                 url: request.url,
                 title,
                 html,
+                markdown: htmlToMarkdown(html),
                 metadata,
                 timestamp: new Date().toISOString(),
             };
@@ -97,8 +99,9 @@ export class PlaywrightEngine extends BaseEngine {
             ...this.options,
             requestHandler,
             failedRequestHandler,
-            headless: false,
+            headless: process.env.HEADLESS === 'false' ? false : true,
         };
+
         crawlerOptions.autoscaledPoolOptions = {
             isFinishedFunction: async () => {
                 return false;

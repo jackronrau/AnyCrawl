@@ -1,0 +1,22 @@
+{
+  "name": "@repo/libs",
+  "type": "module",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc"
+  },
+  "exports": {
+    "./html-to-markdown": {
+      "types": "./src/html-to-markdown.ts",
+      "default": "./dist/html-to-markdown.js"
+    }
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/turndown": "^5.0.5",
+    "typescript": "latest"
+  },
+  "dependencies": {
+    "turndown": "^7.2.0"
+  }
+}

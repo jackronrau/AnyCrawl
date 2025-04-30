@@ -8,9 +8,12 @@ interface requestTask {
     url: string;
     engine: EngineType;
     queueName?: QueueName;
+    options?: {
+        headless?: boolean;
+    }
 }
 
-export type QueueName = 'scrape' | 'crawler';
+export type QueueName = 'scrape' | 'crawler' | string;
 export class QueueManager {
     private static instance: QueueManager;
     private queues: Map<string, Queue> = new Map();

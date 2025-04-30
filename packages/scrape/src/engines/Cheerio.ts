@@ -1,6 +1,7 @@
 import { Utils } from '../Utils.js';
 import { BaseEngine, EngineOptions } from './Base.js';
 import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from 'crawlee';
+import { htmlToMarkdown } from '@repo/libs/html-to-markdown';
 
 /**
  * CheerioEngine class for web scraping using Cheerio
@@ -44,11 +45,13 @@ export class CheerioEngine extends BaseEngine {
                     }
                     return acc;
                 }, {});
+            const html = $('html').html() || '';
             const data = {
                 job_id: jobId,
                 url: request.url,
                 title: $('title').text(),
-                html: $('html').html(),
+                html,
+                markdown: htmlToMarkdown(html),
                 metadata,
                 timestamp: new Date().toISOString(),
             };

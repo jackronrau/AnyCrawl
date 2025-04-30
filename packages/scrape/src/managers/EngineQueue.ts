@@ -3,9 +3,13 @@ import { CheerioEngine } from "../engines/Cheerio.js";
 import { CrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
 import { Utils } from "../Utils.js";
 import { PlaywrightEngine } from "../engines/Playwright.js";
+import { PuppeteerEngine } from "../engines/Puppeteer.js";
+import { BaseEngine, EngineOptions } from "../engines/Base.js";
 
 // Define available engine types
-export const AVAILABLE_ENGINES = ['playwright', 'cheerio'];
+export const AVAILABLE_ENGINES = ['playwright', 'cheerio', 'puppeteer'];
+
+export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 
 // Define engine type
 export type EngineType = typeof AVAILABLE_ENGINES[number];
@@ -14,7 +18,7 @@ export type EngineType = typeof AVAILABLE_ENGINES[number];
 export class EngineQueueManager {
     private static instance: EngineQueueManager;
     private queues: Map<string, RequestQueueV2> = new Map();
-    private engines: Map<string, CheerioEngine | PlaywrightEngine> = new Map();
+    private engines: Map<string, Engine> = new Map();
 
     private constructor() {
     }
@@ -42,45 +46,16 @@ export class EngineQueueManager {
                 throw new Error(`Queue not initialized for ${engineType}`);
             }
 
-            let engine: CheerioEngine | PlaywrightEngine;
+            let engine: Engine;
             switch (engineType) {
                 case 'cheerio':
-                    engine = new CheerioEngine({
-                        maxConcurrency: 50,
-                        minConcurrency: 50,
-                        maxRequestRetries: 1,
-                        requestHandlerTimeoutSecs: 30,
-                        requestQueue: queue,
-                        failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
-                            const { request, error } = context;
-                            log.error(`Request ${request.url} failed with error: ${error}`);
-                        }
-                    });
+                    engine = await this.createCheerioEngine(queue);
                     break;
                 case 'playwright':
-                    engine = new PlaywrightEngine({
-                        maxConcurrency: 10,
-                        minConcurrency: 50,
-                        maxRequestRetries: 1,
-                        requestHandlerTimeoutSecs: 60,
-                        requestQueue: queue,
-                        failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
-                            const { request, error } = context;
-                            log.error(`Request ${request.url} failed with error: ${error}`);
-                        },
-                        launchContext: {
-                            launchOptions: {
-                                args: [
-                                    '--disable-features=TrackingProtection3pcd',
-                                    '--disable-web-security',
-                                    '--no-sandbox',
-                                    '--disable-dev-shm-usage',
-                                    '--disable-accelerated-2d-canvas',
-                                    '--disable-gpu'
-                                ]
-                            }
-                        }
-                    });
+                    engine = await this.createPlaywrightEngine(queue);
+                    break;
+                case 'puppeteer':
+                    engine = await this.createPuppeteerEngine(queue);
                     break;
                 default:
                     throw new Error(`Unknown engine type: ${engineType}`);
@@ -91,6 +66,96 @@ export class EngineQueueManager {
             this.engines.set(engineType, engine);
             log.info(`Initialized engine for ${engineType}`);
         }
+    }
+
+    /**
+     * create cheerio engine
+     * @param queue request queue
+     * @param options engine options
+     * @returns CheerioEngine
+     */
+    async createCheerioEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<CheerioEngine> {
+        const engine = new CheerioEngine({
+            maxConcurrency: 50,
+            minConcurrency: 50,
+            maxRequestRetries: 1,
+            requestHandlerTimeoutSecs: 30,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            ...options
+        });
+        return engine;
+    }
+
+    /**
+     *  reate playwright engine
+     * @param queue request queue
+     * @param options engine options
+     * @returns PlaywrightEngine
+     */
+    async createPlaywrightEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PlaywrightEngine> {
+        const engine = new PlaywrightEngine({
+            maxConcurrency: 10,
+            minConcurrency: 50,
+            maxRequestRetries: 1,
+            requestHandlerTimeoutSecs: 60,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            launchContext: {
+                launchOptions: {
+                    args: [
+                        '--disable-features=TrackingProtection3pcd',
+                        '--disable-web-security',
+                        '--no-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--disable-gpu'
+                    ]
+                }
+            },
+            ...options
+        });
+        return engine;
+    }
+
+    /**
+     * create puppeteer engine
+     * @param queue Request Queue
+     * @param options Engine Options
+     * @returns PuppeteerEngine
+     */
+    async createPuppeteerEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PuppeteerEngine> {
+        const engine = new PuppeteerEngine({
+            maxConcurrency: 10,
+            minConcurrency: 50,
+            maxRequestRetries: 1,
+            requestHandlerTimeoutSecs: 60,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            launchContext: {
+                launchOptions: {
+                    args: [
+                        '--disable-features=TrackingProtection3pcd',
+                        '--disable-web-security',
+                        '--no-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--disable-gpu'
+                    ]
+                }
+            },
+            ...options
+        })
+        return engine
     }
 
     async startEngines(): Promise<void> {
@@ -107,7 +172,7 @@ export class EngineQueueManager {
         }
     }
 
-    async getEngine(engineType: string): Promise<CheerioEngine | PlaywrightEngine> {
+    async getEngine(engineType: string): Promise<Engine> {
         const engine = this.engines.get(engineType);
         if (!engine) {
             throw new Error(`Engine not found for ${engineType}`);
