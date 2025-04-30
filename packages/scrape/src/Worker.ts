@@ -20,6 +20,25 @@ await engineQueueManager.initializeEngines();
 QueueManager.getInstance();
 log.info('All queues and engines initialized and started');
 
+async function runJob(job: Job) {
+    const engineType = job.data.engine || 'cheerio';
+    if (!AVAILABLE_ENGINES.includes(engineType)) {
+        throw new Error(`Unsupported engine type: ${engineType}`);
+    }
+    log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
+    const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
+        jobId: job.id,
+        queueName: job.data.queueName,
+        type: job.data.type,
+        options: job.data.options || {}
+    });
+    job.updateData({
+        ...job.data,
+        uniqueKey,
+        status: 'processing'
+    });
+}
+
 // Initialize the application
 (async () => {
     try {
@@ -27,22 +46,7 @@ log.info('All queues and engines initialized and started');
         log.info('Starting worker...');
         await Promise.all([
             WorkerManager.getInstance().getWorker('scrape', async (job: Job) => {
-                const engineType = job.data.engine || 'cheerio';
-                if (!AVAILABLE_ENGINES.includes(engineType)) {
-                    throw new Error(`Unsupported engine type: ${engineType}`);
-                }
-                log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
-                const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
-                    jobId: job.id,
-                    queueName: 'scrape',
-                    type: 'scrape',
-                    options: job.data.options || {}
-                });
-                job.updateData({
-                    ...job.data,
-                    uniqueKey,
-                    status: 'processing'
-                });
+                await runJob(job);
             }),
         ]);
         log.info('Worker started successfully');
