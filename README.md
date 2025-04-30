@@ -1,84 +1,66 @@
-# Turborepo starter
+# AnyCrawl
 
-This Turborepo starter is maintained by the Turborepo core team.
+> Open-source web Crawler & Scraper for AI applications, with LLM friendly format.
 
-## Using this example
+AnyCrawl is a high-performance web crawling and scraping application specifically designed for AI applications. Built with modern architectures and optimized for LLMs (Large Language Models), it provides:
 
-Run the following command:
+## 🚀 Blazing Fast Performance
+- Multithreading support
+- Good request queuing and caching  
+- Multi-engine support (Cheerio, Puppeteer, Playwright)
 
-```sh
-npx create-turbo@latest
-```
+## 🤖 AI-Ready Data Format
+- Structured output optimized for LLMs
+- Clean, normalized content
+- Rich metadata extraction
 
-## What's inside?
+## 🛠 Developer Friendly
+- Simple yet powerful API
+- Easy deployment and scaling
+- Well-designed architecture
 
-This Turborepo includes the following packages/apps:
+## 🔥 Key Features
+- Real-time crawling and processing
+- Automatic rate limiting and retry
+- Browser fingerprint support & Proxy support
+- LLM Friendly
 
-### Apps and Packages
+## 📈 Built for Scale
+- Horizontal scaling
+- Redis-based job queues
+- Robust error handling
+- Resource-efficient processing
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+AnyCrawl empowers developers to build sophisticated AI applications with high-quality web data, whether for training LLMs, powering AI agents, or feeding real-time data pipelines.
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+# Quick Start
 
-### Utilities
+## Installation
 
-This Turborepo has some additional tools already setup for you:
+### Basic Installation
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
 
-### Build
+### Docker Deployment
 
-To build all apps and packages, run the following command:
+# Call by API
 
-```
-cd my-turborepo
-pnpm build
-```
 
-### Develop
+# Advanced Usage Examples
 
-To develop all apps and packages, run the following command:
+<details>
+<summary>💻 <strong>Run through code</strong></summary>
 
-```
-cd my-turborepo
-pnpm dev
-```
+```js
 
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
 
 ```
-cd my-turborepo
-npx turbo login
+</details>
+
+<details>
+<summary>🚀 <strong>Run immediately, without the queue.</strong></summary>
+
+```js
+
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+</details>

@@ -1,5 +1,5 @@
 {
-  "name": "AnyCrawl",
+  "name": "anycrawl",
   "private": true,
   "scripts": {
     "build": "turbo run build",
