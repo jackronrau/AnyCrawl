@@ -21,6 +21,11 @@ export interface EngineOptions {
     autoscaledPoolOptions?: {
         isFinishedFunction: () => Promise<boolean>;
     };
+    launchContext?: {
+        launchOptions?: {
+            args?: string[];
+        };
+    };
 }
 
 /**

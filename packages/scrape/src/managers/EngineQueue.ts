@@ -1,11 +1,11 @@
-
 import { randomUUID } from "node:crypto";
 import { CheerioEngine } from "../engines/Cheerio.js";
 import { CrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
 import { Utils } from "../Utils.js";
+import { PlaywrightEngine } from "../engines/Playwright.js";
 
 // Define available engine types
-export const AVAILABLE_ENGINES = ['cheerio'];
+export const AVAILABLE_ENGINES = ['playwright', 'cheerio'];
 
 // Define engine type
 export type EngineType = typeof AVAILABLE_ENGINES[number];
@@ -14,7 +14,7 @@ export type EngineType = typeof AVAILABLE_ENGINES[number];
 export class EngineQueueManager {
     private static instance: EngineQueueManager;
     private queues: Map<string, RequestQueueV2> = new Map();
-    private engines: Map<string, CheerioEngine> = new Map();
+    private engines: Map<string, CheerioEngine | PlaywrightEngine> = new Map();
 
     private constructor() {
     }
@@ -42,7 +42,7 @@ export class EngineQueueManager {
                 throw new Error(`Queue not initialized for ${engineType}`);
             }
 
-            let engine;
+            let engine: CheerioEngine | PlaywrightEngine;
             switch (engineType) {
                 case 'cheerio':
                     engine = new CheerioEngine({
@@ -57,10 +57,36 @@ export class EngineQueueManager {
                         }
                     });
                     break;
+                case 'playwright':
+                    engine = new PlaywrightEngine({
+                        maxConcurrency: 10,
+                        minConcurrency: 50,
+                        maxRequestRetries: 1,
+                        requestHandlerTimeoutSecs: 60,
+                        requestQueue: queue,
+                        failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
+                            const { request, error } = context;
+                            log.error(`Request ${request.url} failed with error: ${error}`);
+                        },
+                        launchContext: {
+                            launchOptions: {
+                                args: [
+                                    '--disable-features=TrackingProtection3pcd',
+                                    '--disable-web-security',
+                                    '--no-sandbox',
+                                    '--disable-dev-shm-usage',
+                                    '--disable-accelerated-2d-canvas',
+                                    '--disable-gpu'
+                                ]
+                            }
+                        }
+                    });
+                    break;
                 default:
                     throw new Error(`Unknown engine type: ${engineType}`);
             }
 
+            // Ensure the queue is set before initialization
             await engine.init();
             this.engines.set(engineType, engine);
             log.info(`Initialized engine for ${engineType}`);
@@ -70,12 +96,23 @@ export class EngineQueueManager {
     async startEngines(): Promise<void> {
         // Start all engines
         for (const [engineType, engine] of this.engines) {
-            log.info(`Starting crawler for ${engineType}...`);
-            engine.run().catch(error => {
-                log.error(`Error in crawler for ${engineType}: ${error}`);
-            });
-            log.info(`Crawler started in background for ${engineType}`);
+            try {
+                log.info(`Starting crawler for ${engineType}...`);
+                engine.run().then(() => {
+                });
+            } catch (error) {
+                log.error(`Error starting crawler for ${engineType}: ${error}`);
+                throw error;
+            }
         }
+    }
+
+    async getEngine(engineType: string): Promise<CheerioEngine | PlaywrightEngine> {
+        const engine = this.engines.get(engineType);
+        if (!engine) {
+            throw new Error(`Engine not found for ${engineType}`);
+        }
+        return engine;
     }
 
     async stopEngines(): Promise<void> {

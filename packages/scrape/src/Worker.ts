@@ -14,7 +14,6 @@ log.info('Initializing queues and engines...');
 const engineQueueManager = EngineQueueManager.getInstance();
 await engineQueueManager.initializeQueues();
 await engineQueueManager.initializeEngines();
-await engineQueueManager.startEngines();
 
 // Initialize QueueManager
 QueueManager.getInstance();
@@ -83,3 +82,5 @@ log.info('All queues and engines initialized and started');
         process.exit(1);
     }
 })();
+await engineQueueManager.startEngines();
+

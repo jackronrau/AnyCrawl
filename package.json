@@ -8,7 +8,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "scrape:dev": "cd packages/scrape && pnpm start:dev",
-    "scrape:test": "cd packages/scrape && pnpm test"
+    "scrape:test": "cd packages/scrape && pnpm test",
+    "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
