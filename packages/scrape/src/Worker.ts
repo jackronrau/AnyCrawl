@@ -32,7 +32,6 @@ log.info('All queues and engines initialized and started');
                     throw new Error(`Unsupported engine type: ${engineType}`);
                 }
                 log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
-
                 const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
                     jobId: job.id,
                     queueName: 'scrape',

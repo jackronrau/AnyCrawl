@@ -46,25 +46,32 @@ export class EngineQueueManager {
                 throw new Error(`Queue not initialized for ${engineType}`);
             }
 
-            let engine: Engine;
-            switch (engineType) {
-                case 'cheerio':
-                    engine = await this.createCheerioEngine(queue);
-                    break;
-                case 'playwright':
-                    engine = await this.createPlaywrightEngine(queue);
-                    break;
-                case 'puppeteer':
-                    engine = await this.createPuppeteerEngine(queue);
-                    break;
-                default:
-                    throw new Error(`Unknown engine type: ${engineType}`);
-            }
+            let engine: Engine = await this.createEngine(engineType, queue);
 
             // Ensure the queue is set before initialization
             await engine.init();
             this.engines.set(engineType, engine);
             log.info(`Initialized engine for ${engineType}`);
+        }
+    }
+
+    /**
+     * create engine
+     * @param engineType engine type
+     * @param queue request queue
+     * @param options engine options
+     * @returns engine
+     */
+    async createEngine(engineType: string, queue: RequestQueueV2, options?: EngineOptions): Promise<Engine> {
+        switch (engineType) {
+            case 'cheerio':
+                return this.createCheerioEngine(queue, options);
+            case 'playwright':
+                return this.createPlaywrightEngine(queue, options);
+            case 'puppeteer':
+                return this.createPuppeteerEngine(queue, options);
+            default:
+                throw new Error(`Unknown engine type: ${engineType}`);
         }
     }
 

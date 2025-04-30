@@ -1,6 +1,8 @@
 import { Configuration, KeyValueStore, log, RequestQueueV2 } from "crawlee";
 import { join } from "node:path";
 import IORedis from "ioredis";
+import { EngineQueueManager } from "./managers/EngineQueue.js";
+import { Job } from "bullmq";
 
 /**
  * Utility class for storing global instances
@@ -77,6 +79,26 @@ export class Utils {
             maxRetriesPerRequest: null,
         });
         return redisConnection;
+    }
+
+    public async runRandomQueue(job: Job) {
+
+        let queueName = `temporary_scrape_${job.id}`;
+        const queue = await Utils.getInstance().getQueue(queueName);
+        await queue.addRequest({
+            url: job.data.url,
+            label: queueName,
+            userData: {
+                jobId: job.id,
+                queueName: 'scrape',
+                type: 'temporary_scrape',
+                options: {}
+            }
+        });
+        const engine = await EngineQueueManager.getInstance().createEngine(job.data.engine, queue);
+        (await engine.init())
+        await engine.getEngine().run();
+        await queue.drop();
     }
 }
 
