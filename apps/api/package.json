@@ -1,0 +1,33 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "drizzle": "dotenv-run -r ../.. ",
+    "install": "drizzle-kit migrate",
+    "dev": "NODE_ENV=development pnpm run drizzle -- nodemon src/index.ts",
+    "build": "tsc",
+    "start": "NODE_ENV=production pnpm run drizzle -- tsc && node dist/index.js",
+    "db:generate": "pnpm run drizzle -- drizzle-kit generate",
+    "db:migrate": "pnpm run drizzle -- drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@repo/libs": "workspace:*",
+    "@repo/scrape": "workspace:*",
+    "@types/pg": "^8.12.0",
+    "better-sqlite3": "^11.9.1",
+    "drizzle-orm": "^0.43.1",
+    "express": "^5.1.0",
+    "node-gyp": "^11.2.0",
+    "nodemon": "^3.1.10",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@dotenv-run/cli": "^1.3.6",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.1",
+    "drizzle-kit": "^0.31.1"
+  }
+}

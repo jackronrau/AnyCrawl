@@ -9,7 +9,10 @@
     "check-types": "turbo run check-types",
     "scrape:dev": "cd packages/scrape && pnpm start:dev",
     "scrape:test": "cd packages/scrape && pnpm test",
-    "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps"
+    "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps",
+    "api:dev": "cd apps/api && pnpm dev",
+    "api:start": "cd apps/api && pnpm start",
+    "api:build": "cd apps/api && pnpm build"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
