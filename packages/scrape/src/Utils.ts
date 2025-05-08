@@ -99,6 +99,7 @@ export class Utils {
         (await engine.init())
         await engine.getEngine().run();
         await queue.drop();
+        console.log(123)
     }
 }
 

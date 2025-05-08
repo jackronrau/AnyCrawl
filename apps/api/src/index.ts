@@ -4,7 +4,9 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import morgan from "morgan";
 import responseTime from "response-time";
-
+import { logMiddleware } from "./middlewares/LogMiddleware";
+import { authMiddleware } from "./middlewares/AuthMiddleware";
+import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware";
 const app = express();
 const port = process.env.API_PORT || 8080;
 
@@ -14,7 +16,11 @@ app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(responseTime());
-
+// app.use(logMiddleware)
+// check Auth
+app.use(authMiddleware)
+// check credits
+app.use(checkCreditsMiddleware)
 // load routers
 app.use('/v1', v1Router);
 

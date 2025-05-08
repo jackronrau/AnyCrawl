@@ -26,6 +26,7 @@ export interface EngineOptions {
             args?: string[];
         };
     };
+    preNavigationHooks?: ((context: CrawlingContext) => Promise<any>)[];
 }
 
 /**

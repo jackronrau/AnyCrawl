@@ -2,9 +2,10 @@
     "name": "@repo/scrape",
     "type": "module",
     "scripts": {
+        "drizzle": "dotenv-run -r ../.. ",
         "build": "tsc",
-        "dev": "tsc && node dist/Worker.js",
-        "start": "tsx src/Worker.ts",
+        "dev": "pnpm run drizzle -- tsx ./src/Worker.ts",
+        "start": "pnpm run drizzle -- tsc && node dist/Worker.js",
         "test": "tsx src/Test.ts"
     },
     "exports": {
@@ -28,6 +29,7 @@
         "typescript": "5.8.2"
     },
     "dependencies": {
+        "@dotenv-run/cli": "^1.3.6",
         "@repo/libs": "workspace:*",
         "bull": "^4.16.5",
         "bullmq": "^5.45.1",

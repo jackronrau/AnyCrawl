@@ -1,13 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { requestLog } from '../db/schemas/PostgreSQL';
 import { getDB } from '../db';
-import { randomUUID } from 'crypto';
 
-interface RequestWithFiles extends Request {
-    files?: any;
-}
-
-export const logMiddleware = async (req: RequestWithFiles, res: Response, next: NextFunction) => {
+export const logMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const startTime = process.hrtime();
     const originalSend = res.send;
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { CheerioEngine } from "../engines/Cheerio.js";
-import { CrawlingContext, Dictionary, log, RequestQueueV2 } from "crawlee";
+import { CrawlingContext, Dictionary, LaunchContext, log, RequestQueueV2 } from "crawlee";
 import { Utils } from "../Utils.js";
 import { PlaywrightEngine } from "../engines/Playwright.js";
 import { PuppeteerEngine } from "../engines/Puppeteer.js";
@@ -13,6 +13,36 @@ export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 
 // Define engine type
 export type EngineType = typeof AVAILABLE_ENGINES[number];
+
+const defaultOptions: EngineOptions = {
+    maxConcurrency: process.env.MAX_CONCURRENCY ? parseInt(process.env.MAX_CONCURRENCY) : 50,
+    minConcurrency: process.env.MIN_CONCURRENCY ? parseInt(process.env.MIN_CONCURRENCY) : 50,
+    maxRequestRetries: 1,
+    requestHandlerTimeoutSecs: 60,
+    preNavigationHooks: [
+        async ({ request, page }) => {
+            // pre navigation hook, you can set extra headers, cookies, etc.
+            // TODO block media requests
+        }
+    ],
+}
+
+const defaultLaunchContext: Partial<LaunchContext> = {
+    launchOptions: {
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+        ]
+    }
+}
+
+
 
 // Queue manager class to handle all engine queues
 export class EngineQueueManager {
@@ -87,10 +117,7 @@ export class EngineQueueManager {
      */
     async createCheerioEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<CheerioEngine> {
         const engine = new CheerioEngine({
-            maxConcurrency: 50,
-            minConcurrency: 50,
-            maxRequestRetries: 1,
-            requestHandlerTimeoutSecs: 30,
+            ...defaultOptions,
             requestQueue: queue,
             failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
                 const { request, error } = context;
@@ -109,27 +136,13 @@ export class EngineQueueManager {
      */
     async createPlaywrightEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PlaywrightEngine> {
         const engine = new PlaywrightEngine({
-            maxConcurrency: 10,
-            minConcurrency: 50,
-            maxRequestRetries: 1,
-            requestHandlerTimeoutSecs: 60,
+            ...defaultOptions,
             requestQueue: queue,
             failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
                 const { request, error } = context;
                 log.error(`Request ${request.url} failed with error: ${error}`);
             },
-            launchContext: {
-                launchOptions: {
-                    args: [
-                        '--disable-features=TrackingProtection3pcd',
-                        '--disable-web-security',
-                        '--no-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--disable-gpu'
-                    ]
-                }
-            },
+            launchContext: defaultLaunchContext,
             ...options
         });
         return engine;
@@ -143,27 +156,13 @@ export class EngineQueueManager {
      */
     async createPuppeteerEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PuppeteerEngine> {
         const engine = new PuppeteerEngine({
-            maxConcurrency: 10,
-            minConcurrency: 50,
-            maxRequestRetries: 1,
-            requestHandlerTimeoutSecs: 60,
+            ...defaultOptions,
             requestQueue: queue,
             failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
                 const { request, error } = context;
                 log.error(`Request ${request.url} failed with error: ${error}`);
             },
-            launchContext: {
-                launchOptions: {
-                    args: [
-                        '--disable-features=TrackingProtection3pcd',
-                        '--disable-web-security',
-                        '--no-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--disable-gpu'
-                    ]
-                }
-            },
+            launchContext: defaultLaunchContext,
             ...options
         })
         return engine
