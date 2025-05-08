@@ -4,10 +4,12 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "start": "turbo run start",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "scrape:dev": "cd packages/scrape && pnpm start:dev",
+    "scrape:dev": "cd packages/scrape && pnpm dev",
+    "scrape:start": "cd packages/scrape && pnpm start",
     "scrape:test": "cd packages/scrape && pnpm test",
     "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps",
     "api:dev": "cd apps/api && pnpm dev",

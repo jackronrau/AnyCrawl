@@ -7,7 +7,7 @@ import { PuppeteerEngine } from "../engines/Puppeteer.js";
 import { BaseEngine, EngineOptions } from "../engines/Base.js";
 
 // Define available engine types
-export const AVAILABLE_ENGINES = ['playwright', 'cheerio', 'puppeteer'];
+export const AVAILABLE_ENGINES = ['playwright', 'cheerio', 'puppeteer'] as const;
 
 export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 
@@ -21,6 +21,10 @@ export class EngineQueueManager {
     private engines: Map<string, Engine> = new Map();
 
     private constructor() {
+    }
+
+    async getAvailableEngines(): Promise<EngineType[]> {
+        return [...AVAILABLE_ENGINES];
     }
 
     static getInstance(): EngineQueueManager {

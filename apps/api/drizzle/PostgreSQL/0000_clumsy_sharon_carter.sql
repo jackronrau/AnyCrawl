@@ -19,7 +19,7 @@ CREATE TABLE "request_log" (
 	"path" text NOT NULL,
 	"method" text NOT NULL,
 	"status_code" integer NOT NULL,
-	"processing_time_ms" integer NOT NULL,
+	"processing_time_ms" real NOT NULL,
 	"credits_used" integer DEFAULT 0 NOT NULL,
 	"ip_address" text,
 	"user_agent" text,

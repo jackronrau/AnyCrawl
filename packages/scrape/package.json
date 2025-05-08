@@ -2,13 +2,20 @@
     "name": "@repo/scrape",
     "type": "module",
     "scripts": {
-        "dev": "tsc --watch",
         "build": "tsc",
-        "start:dev": "tsx src/Worker.ts",
+        "dev": "tsc && node dist/Worker.js",
+        "start": "tsx src/Worker.ts",
         "test": "tsx src/Test.ts"
     },
     "exports": {
-        "./*": "./src/*.tsx"
+        "./*": {
+            "import": "./src/*.ts",
+            "default": "./dist/*.js"
+        },
+        "./**/*": {
+            "import": "./src/**/*.ts",
+            "default": "./dist/**/*.js"
+        }
     },
     "devDependencies": {
         "@repo/eslint-config": "workspace:*",

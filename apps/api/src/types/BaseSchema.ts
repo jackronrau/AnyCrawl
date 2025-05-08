@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { EngineType } from '@repo/scrape/src/managers/EngineQueue.js';
+import { AVAILABLE_ENGINES } from '@repo/scrape/managers/EngineQueue';
 
 export const baseSchema = z.object({
+
     /**
      * The URL to be processed
      */
@@ -10,7 +11,7 @@ export const baseSchema = z.object({
     /**
      * The engine to be used
      */
-    engine: z.custom<EngineType>(),
+    engine: z.enum(AVAILABLE_ENGINES),
 });
 
 export type BaseSchema = z.infer<typeof baseSchema>; 

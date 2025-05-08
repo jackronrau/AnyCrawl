@@ -38,7 +38,7 @@ export const requestLog = p.sqliteTable("request_log", {
     // Response status code
     statusCode: p.integer("status_code").notNull(),
     // Request processing time in milliseconds
-    processingTimeMs: p.integer("processing_time_ms").notNull(),
+    processingTimeMs: p.real("processing_time_ms").notNull(),
     // Number of credits consumed
     creditsUsed: p.integer("credits_used").notNull().default(0),
     // Request IP address

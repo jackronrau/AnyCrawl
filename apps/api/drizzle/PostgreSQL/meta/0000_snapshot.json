@@ -1,5 +1,5 @@
 {
-  "id": "2c0971d2-d452-4f44-876e-434d9a0aa1df",
+  "id": "5efbc1cd-ce09-4eb5-a674-a5401156aa53",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -131,7 +131,7 @@
         },
         "processing_time_ms": {
           "name": "processing_time_ms",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true
         },

@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "drizzle": "dotenv-run -r ../.. ",
-    "install": "drizzle-kit migrate",
-    "dev": "NODE_ENV=development pnpm run drizzle -- nodemon src/index.ts",
-    "build": "tsc",
-    "start": "NODE_ENV=production pnpm run drizzle -- tsc && node dist/index.js",
+    "clean": "rm -rf dist",
+    "dev": "NODE_ENV=development pnpm run drizzle -- nodemon --exec \"node -r esbuild-register ./src/index.ts\" -e .ts",
+    "build": "NODE_ENV=production pnpm run drizzle -- pnpm run clean && tsc",
+    "start": "NODE_ENV=production node -r esbuild-register ./dist/index.js",
     "db:generate": "pnpm run drizzle -- drizzle-kit generate",
     "db:migrate": "pnpm run drizzle -- drizzle-kit migrate"
   },
@@ -16,10 +16,14 @@
     "@repo/scrape": "workspace:*",
     "@types/pg": "^8.12.0",
     "better-sqlite3": "^11.9.1",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
     "drizzle-orm": "^0.43.1",
     "express": "^5.1.0",
+    "morgan": "^1.10.0",
     "node-gyp": "^11.2.0",
     "nodemon": "^3.1.10",
+    "response-time": "^2.3.3",
     "zod": "^3.24.4"
   },
   "devDependencies": {
@@ -27,7 +31,13 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/body-parser": "^1.19.5",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
-    "drizzle-kit": "^0.31.1"
+    "@types/morgan": "^1.9.9",
+    "@types/response-time": "^2.3.8",
+    "drizzle-kit": "^0.31.1",
+    "esbuild-register": "^3.6.0",
+    "jest": "^29.7.0"
   }
 }

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "13afd653-93b7-4ea4-a935-fa79066ff22d",
+  "id": "6e5a339b-5ab4-4c9a-aed4-1a6a8a6ff8f4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "api_key": {
@@ -143,7 +143,7 @@
         },
         "processing_time_ms": {
           "name": "processing_time_ms",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

@@ -1,12 +1,22 @@
 import express from "express";
-import { eq } from "drizzle-orm";
-import { getDB, schemas } from "./db";
-import { logMiddleware } from "./middlewares/LogMiddleware";
+import v1Router from "./routers/v1";
+import bodyParser from "body-parser";
+import cors from "cors";
+import morgan from "morgan";
+import responseTime from "response-time";
+
 const app = express();
 const port = process.env.API_PORT || 8080;
 
-// load middleware
-app.use(logMiddleware);
+app.disable('x-powered-by');
+app.use(cors());
+app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(responseTime());
+
+// load routers
+app.use('/v1', v1Router);
 
 // Start the server
 app.listen(port, async () => {
