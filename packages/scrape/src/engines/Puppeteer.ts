@@ -102,6 +102,7 @@ export class PuppeteerEngine extends BaseEngine {
                 return false;
             }
         }
+        // crawlerOptions.preNavigationHooks, to set custom headers and so on.
 
         this.engine = new PuppeteerCrawler(crawlerOptions);
         this.isInitialized = true;
