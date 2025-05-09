@@ -12,12 +12,16 @@ export const AVAILABLE_SEARCH_ENGINES = ['google'] as const;
 export class SearchService {
     private engines: Map<string, SearchEngine>;
     private requestsToResponses: Map<string, (results: SearchResult[]) => void>;
+    private partialResults: Map<string, SearchResult[]>;
+    private pendingRequests: Map<string, number>;
     private crawler: CheerioEngine | null = null;
     private searchQueue: any | null = null;
 
     constructor() {
         this.engines = new Map();
         this.requestsToResponses = new Map();
+        this.partialResults = new Map();
+        this.pendingRequests = new Map();
     }
 
     private createEngine(name: string): SearchEngine {
@@ -60,13 +64,25 @@ export class SearchService {
                         const results = await engine.parse(html, request);
                         log.info(`Parsed results: ${results.length}`);
 
-                        const callback = this.requestsToResponses.get(uniqueKey);
-                        if (callback) {
-                            log.info(`Found callback for uniqueKey: ${uniqueKey}`);
-                            callback(results);
-                            this.requestsToResponses.delete(uniqueKey);
-                        } else {
-                            log.info(`No callback found for uniqueKey: ${uniqueKey}`);
+                        // Accumulate results
+                        const currentResults = this.partialResults.get(uniqueKey) || [];
+                        this.partialResults.set(uniqueKey, [...currentResults, ...results]);
+
+                        // Decrement pending requests
+                        const pendingCount = this.pendingRequests.get(uniqueKey) || 0;
+                        const newPendingCount = pendingCount - 1;
+                        this.pendingRequests.set(uniqueKey, newPendingCount);
+
+                        // If all requests are complete, resolve with accumulated results
+                        if (newPendingCount === 0) {
+                            const callback = this.requestsToResponses.get(uniqueKey);
+                            if (callback) {
+                                log.info(`All requests complete for uniqueKey: ${uniqueKey}`);
+                                callback(this.partialResults.get(uniqueKey) || []);
+                                this.requestsToResponses.delete(uniqueKey);
+                                this.partialResults.delete(uniqueKey);
+                                this.pendingRequests.delete(uniqueKey);
+                            }
                         }
                     } catch (error) {
                         log.error(`Error in request handler: ${error}`);
@@ -80,13 +96,21 @@ export class SearchService {
                         const uniqueKey = request.userData.uniqueKey;
                         log.error(`Failed to process ${request.url}:`, error);
 
-                        const callback = this.requestsToResponses.get(uniqueKey);
-                        if (callback) {
-                            log.info(`Found callback for failed request: ${uniqueKey}`);
-                            callback([]);
-                            this.requestsToResponses.delete(uniqueKey);
-                        } else {
-                            log.info(`No callback found for failed request: ${uniqueKey}`);
+                        // Decrement pending requests even for failed requests
+                        const pendingCount = this.pendingRequests.get(uniqueKey) || 0;
+                        const newPendingCount = pendingCount - 1;
+                        this.pendingRequests.set(uniqueKey, newPendingCount);
+
+                        // If all requests are complete (including failed ones), resolve with accumulated results
+                        if (newPendingCount === 0) {
+                            const callback = this.requestsToResponses.get(uniqueKey);
+                            if (callback) {
+                                log.info(`All requests complete for uniqueKey: ${uniqueKey} (including failed ones)`);
+                                callback(this.partialResults.get(uniqueKey) || []);
+                                this.requestsToResponses.delete(uniqueKey);
+                                this.partialResults.delete(uniqueKey);
+                                this.pendingRequests.delete(uniqueKey);
+                            }
                         }
                     } catch (error) {
                         log.error(`Error in failed request handler: ${error}`);
@@ -106,6 +130,8 @@ export class SearchService {
             const uniqueKey = randomUUID();
             log.info(`Created uniqueKey for search: ${uniqueKey}`);
             this.requestsToResponses.set(uniqueKey, resolve);
+            this.partialResults.set(uniqueKey, []);
+            this.pendingRequests.set(uniqueKey, options.pages ?? 1);
 
             await this.executeSearch(engineName, options, uniqueKey);
         });
