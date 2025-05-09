@@ -1,5 +1,6 @@
 {
   "name": "@repo/libs",
+  "version": "0.0.1-beta.1",
   "type": "module",
   "scripts": {
     "watch": "tsc --watch",

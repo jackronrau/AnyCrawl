@@ -1,66 +1,112 @@
-# AnyCrawl
+<div align="center">
 
-> Open-source web Crawler & Scraper for AI applications, with LLM friendly format.
+<h1>
+  AnyCrawl
+</h1>
 
-AnyCrawl is a high-performance web crawling and scraping application specifically designed for AI applications. Built with modern architectures and optimized for LLMs (Large Language Models), it provides:
+<img src="https://img.shields.io/badge/⚡-Fast-blue" alt="Fast"/>
+<img src="https://img.shields.io/badge/🚀-Scalable-orange" alt="Scalable"/>
+<img src="https://img.shields.io/badge/🕷️-Web%20Crawling-ff69b4" alt="Web Crawling"/>
+<img src="https://img.shields.io/badge/🌐-Site%20Crawling-9cf" alt="Site Crawling"/>
+<img src="https://img.shields.io/badge/🔍-SERP%20(Multi%20Engines)-green" alt="SERP"/>
+<img src="https://img.shields.io/badge/⚙️-Multi%20Threading-yellow" alt="Multi Threading"/>
+<img src="https://img.shields.io/badge/🔄-Multi%20Process-purple" alt="Multi Process"/>
+<img src="https://img.shields.io/badge/📦-Batch%20Tasks-red" alt="Batch Tasks"/>
 
-## 🚀 Blazing Fast Performance
-- Multithreading support
-- Good request queuing and caching  
-- Multi-engine support (Cheerio, Puppeteer, Playwright)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![LLM Ready](https://img.shields.io/badge/LLM-Ready-blueviolet)](https://github.com/any4ai/anycrawl)
 
-## 🤖 AI-Ready Data Format
-- Structured output optimized for LLMs
-- Clean, normalized content
-- Rich metadata extraction
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis"/>
+</p>
 
-## 🛠 Developer Friendly
-- Simple yet powerful API
-- Easy deployment and scaling
-- Well-designed architecture
+</div>
 
-## 🔥 Key Features
-- Real-time crawling and processing
-- Automatic rate limiting and retry
-- Browser fingerprint support & Proxy support
-- LLM Friendly
+## 📖 Overview
 
-## 📈 Built for Scale
-- Horizontal scaling
-- Redis-based job queues
-- Robust error handling
-- Resource-efficient processing
+AnyCrawl is a high-performance web crawling and scraping application that excels in multiple domains:
 
-AnyCrawl empowers developers to build sophisticated AI applications with high-quality web data, whether for training LLMs, powering AI agents, or feeding real-time data pipelines.
+- **SERP Crawling**: Support for multiple search engines with batch processing capabilities
+- **Web Crawling**: Efficient single-page content extraction
+- **Site Crawling**: Comprehensive full-site crawling with intelligent traversal
+- **High Performance**: Multi-threading and multi-process architecture
+- **Batch Processing**: Efficient handling of batch crawling tasks
 
-# Quick Start
+Built with modern architectures and optimized for LLMs (Large Language Models), AnyCrawl provides:
 
-## Installation
-
-### Basic Installation
-
+## 🚀 Quick Start
 
 ### Docker Deployment
 
-# Call by API
-
-
-# Advanced Usage Examples
-
-<details>
-<summary>💻 <strong>Run through code</strong></summary>
-
-```js
-
-
-```
-</details>
-
-<details>
-<summary>🚀 <strong>Run immediately, without the queue.</strong></summary>
-
-```js
+```bash
 
 ```
 
-</details>
+### Environment Variables
+
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+
+## 📚 Usage Examples
+
+### Web Scraping
+
+#### Basic Usage
+
+```typescript
+
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+
+### Search Engine Results (SERP)
+
+#### Basic Usage
+
+```typescript
+
+```
+
+#### Parameters
+
+| Parameter | Type   | Description  |
+| --------- | ------ | ------------ |
+| `query`   | string | Search query |
+
+#### Supported Search Engines
+
+- Google
+
+## ❓ FAQ
+
+### Common Questions
+
+1. **Q: Can I use proxies?**
+   A: Yes, AnyCrawl supports both HTTP and SOCKS proxies. Configure them through the `PROXY_URL` environment variable.
+
+2. **Q: How to handle JavaScript-rendered content?**
+   A: AnyCrawl supports Puppeteer and Playwright for JavaScript rendering needs.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🎯 Mission
+
+Our mission is to build foundational products for the AI ecosystem, providing essential tools that empower both individuals and enterprises to develop AI applications. We are committed to accelerating the advancement of AI technology by delivering robust, scalable infrastructure that serves as the cornerstone for innovation in artificial intelligence.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by the Any4AI team</sub>
+</div>

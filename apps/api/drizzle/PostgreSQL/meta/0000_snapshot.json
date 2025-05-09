@@ -86,9 +86,7 @@
         "api_key_key_unique": {
           "name": "api_key_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "key"
-          ]
+          "columns": ["key"]
         }
       },
       "policies": {},
@@ -186,12 +184,8 @@
           "name": "request_log_api_key_id_api_key_uuid_fk",
           "tableFrom": "request_log",
           "tableTo": "api_key",
-          "columnsFrom": [
-            "api_key_id"
-          ],
-          "columnsTo": [
-            "uuid"
-          ],
+          "columnsFrom": ["api_key_id"],
+          "columnsTo": ["uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

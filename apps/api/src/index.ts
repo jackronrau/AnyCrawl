@@ -12,22 +12,26 @@ import { log, ConsoleStream } from "@repo/libs/log";
 const app = express();
 const port = process.env.API_PORT || 8080;
 
-app.disable('x-powered-by');
+app.disable("x-powered-by");
 app.use(cors());
-app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined', { stream: new ConsoleStream() }));
+app.use(
+  morgan(process.env.NODE_ENV === "development" ? "dev" : "combined", {
+    stream: new ConsoleStream(),
+  })
+);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(responseTime());
-app.use(logMiddleware)
+app.use(logMiddleware);
 // check Auth
-app.use(authMiddleware)
+app.use(authMiddleware);
 // check credits
-app.use(checkCreditsMiddleware)
+app.use(checkCreditsMiddleware);
 // load routers
-app.use('/v1', v1Router);
+app.use("/v1", v1Router);
 
 // Start the server
 app.listen(port, async () => {
-    log.info(`✨ Server is running on port ${port}`);
+  log.info(`✨ Server is running on port ${port}`);
 });
