@@ -67,7 +67,7 @@ async function runJob(job: Job) {
 
         // Handle graceful shutdown
         process.on('SIGINT', async () => {
-            log.info('Received SIGINT signal, stopping all crawlers...');
+            log.warning('Received SIGINT signal, stopping all crawlers...');
             // Temporarily disable console.warn to prevent the pause message
             const originalWarn = console.warn;
             console.warn = () => { };

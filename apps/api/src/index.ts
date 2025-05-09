@@ -7,16 +7,19 @@ import responseTime from "response-time";
 import { logMiddleware } from "./middlewares/LogMiddleware";
 import { authMiddleware } from "./middlewares/AuthMiddleware";
 import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware";
+import { log, ConsoleStream } from "@repo/libs/log";
+
 const app = express();
 const port = process.env.API_PORT || 8080;
 
 app.disable('x-powered-by');
 app.use(cors());
-app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined', { stream: new ConsoleStream() }));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(responseTime());
-// app.use(logMiddleware)
+app.use(logMiddleware)
 // check Auth
 app.use(authMiddleware)
 // check credits
@@ -26,5 +29,5 @@ app.use('/v1', v1Router);
 
 // Start the server
 app.listen(port, async () => {
-    console.log(`Server is running on port ${port}`);
+    log.info(`✨ Server is running on port ${port}`);
 });

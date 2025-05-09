@@ -21,6 +21,8 @@ export class CheerioEngine extends BaseEngine {
         super(options);
         this.customRequestHandler = options.requestHandler;
         this.customFailedRequestHandler = options.failedRequestHandler;
+        delete options.requestHandler;
+        delete options.failedRequestHandler;
     }
 
     /**
@@ -71,7 +73,9 @@ export class CheerioEngine extends BaseEngine {
                 } else {
                     data = await defaultRequestHandler(context);
                 }
-                await this.doneJob(context.request.userData['jobId'], context.request.userData['queueName'], data);
+                if (context.request.userData['jobId']) {
+                    await this.doneJob(context.request.userData['jobId'], context.request.userData['queueName'], data);
+                }
             } catch (error) {
                 log.error(`[${context.request.userData['queueName']}] Error processing request ${context.request.url}: ${error}`);
                 throw error;
@@ -84,7 +88,9 @@ export class CheerioEngine extends BaseEngine {
             } else {
                 await defaultFailedRequestHandler(context);
             }
-            await this.failedJob(context.request.userData['jobId'], context.request.userData['queueName'], error.message);
+            if (context.request.userData['jobId']) {
+                await this.failedJob(context.request.userData['jobId'], context.request.userData['queueName'], error.message);
+            }
         };
 
         const crawlerOptions = {
@@ -97,6 +103,7 @@ export class CheerioEngine extends BaseEngine {
                 return false;
             }
         }
+
         this.engine = new CheerioCrawler(crawlerOptions);
         this.isInitialized = true;
     }

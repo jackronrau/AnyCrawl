@@ -2,6 +2,7 @@
   "name": "anycrawl",
   "private": true,
   "scripts": {
+    "watch": "turbo run watch",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "start": "turbo run start",

@@ -2,13 +2,17 @@
   "name": "@repo/libs",
   "type": "module",
   "scripts": {
-    "dev": "tsc --watch",
+    "watch": "tsc --watch",
     "build": "tsc"
   },
   "exports": {
     "./html-to-markdown": {
       "types": "./src/html-to-markdown.ts",
       "default": "./dist/html-to-markdown.js"
+    },
+    "./log": {
+      "types": "./src/log.ts",
+      "default": "./dist/log.js"
     }
   },
   "devDependencies": {
@@ -17,6 +21,7 @@
     "typescript": "latest"
   },
   "dependencies": {
-    "turndown": "^7.2.0"
+    "turndown": "^7.2.0",
+    "crawlee": "^3.13.0"
   }
 }

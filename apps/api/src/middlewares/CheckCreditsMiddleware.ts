@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { getDB, schemas } from '../db';
 import { eq } from 'drizzle-orm';
 import { RequestWithAuth } from '../types/Types';
+import { log } from '@repo/libs/log';
 
 export const checkCreditsMiddleware = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     // Skip credits check if auth is disabled
@@ -25,7 +26,7 @@ export const checkCreditsMiddleware = async (req: RequestWithAuth, res: Response
 
         next();
     } catch (error) {
-        console.error('Error checking credits:', error);
+        log.error(`Error checking credits: ${error}`);
         res.status(500).json({
             success: false,
             error: 'Internal server error'

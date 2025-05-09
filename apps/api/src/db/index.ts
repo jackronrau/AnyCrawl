@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import * as sqliteSchema from './schemas/SQLite';
 import * as postgresqlSchema from './schemas/PostgreSQL';
 import { Client } from 'pg';
+import { log } from '@repo/libs/log';
 
 export const schemas = (process.env.API_DB_TYPE?.toLowerCase() === 'sqlite'
     ? sqliteSchema
@@ -17,23 +18,23 @@ export const initializeDatabase = async () => {
     const dbType = process.env.API_DB_TYPE?.toLowerCase();
     switch (dbType) {
         case 'sqlite':
-            console.log('Using SQLite database');
+            log.info('Using SQLite database');
             const sqlite = new Database(process.env.API_DB_CONNECTION);
             dbInstance = drizzleSQLite(sqlite, { schema: sqliteSchema });
             return dbInstance;
         case 'postgresql':
-            console.log('Using PostgreSQL database');
+            log.info('Using PostgreSQL database');
             if (!process.env.API_DB_CONNECTION) {
                 throw new Error('Database connection string is required');
             }
             const client = new Client(process.env.API_DB_CONNECTION);
             try {
                 await client.connect();
-                console.log('PostgreSQL connection established');
+                log.info('PostgreSQL connection established');
                 dbInstance = drizzle(client, { schema: postgresqlSchema });
                 return dbInstance;
             } catch (error) {
-                console.error('Failed to connect to PostgreSQL:', error);
+                log.error(`Failed to connect to PostgreSQL: ${error}`);
                 throw error;
             }
         default:

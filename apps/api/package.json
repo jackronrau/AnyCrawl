@@ -14,6 +14,7 @@
   "dependencies": {
     "@repo/libs": "workspace:*",
     "@repo/scrape": "workspace:*",
+    "@repo/search": "workspace:*",
     "@types/pg": "^8.12.0",
     "better-sqlite3": "^11.9.1",
     "body-parser": "^2.2.0",

@@ -123,6 +123,7 @@ export class EngineQueueManager {
                 const { request, error } = context;
                 log.error(`Request ${request.url} failed with error: ${error}`);
             },
+            additionalMimeTypes: ['text/html', 'text/plain', 'application/xhtml+xml'],
             ...options
         });
         return engine;

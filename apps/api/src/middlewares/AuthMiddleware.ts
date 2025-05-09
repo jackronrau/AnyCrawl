@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { getDB, schemas } from '../db';
 import { eq } from 'drizzle-orm';
 import { RequestWithAuth } from '../types/Types';
-
+import { log } from '@repo/libs/log';
 export const authMiddleware = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     // check API_AUTH_ENABLED is true, default is disabled
     if (process.env.API_AUTH_ENABLED !== 'true') {
@@ -50,7 +50,7 @@ export const authMiddleware = async (req: RequestWithAuth, res: Response, next: 
 
         next();
     } catch (error) {
-        console.error('Error validating API key:', error);
+        log.error(`Error validating API key: ${error}`);
         res.status(500).json({ success: false, error: 'Internal server error' });
         return;
     }

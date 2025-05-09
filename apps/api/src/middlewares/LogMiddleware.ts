@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { requestLog } from '../db/schemas/PostgreSQL';
 import { getDB } from '../db';
+import { log } from '@repo/libs/log';
 
 export const logMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const startTime = process.hrtime();
@@ -40,7 +41,7 @@ export const logMiddleware = async (req: Request, res: Response, next: NextFunct
         getDB()
             .then(db => db.insert(requestLog).values(logEntry))
             .catch((error: Error) => {
-                console.error('Failed to log request:', error);
+                log.error(`Failed to log request: ${error}`);
             });
 
         // Call original send
