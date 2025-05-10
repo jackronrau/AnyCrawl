@@ -37,7 +37,7 @@ export class SearchController {
         offset: validatedData.offset || 0,
         pages: validatedData.pages || 1,
         lang: validatedData.lang,
-        country: validatedData.country,
+        // country: validatedData.country,
       });
 
       res.json({

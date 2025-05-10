@@ -14,7 +14,7 @@ let dbInstance: ReturnType<typeof drizzle> | ReturnType<typeof drizzleSQLite> | 
 
 export const initializeDatabase = async () => {
   if (dbInstance) return dbInstance;
-
+  log.info(`Initializing database with type: ${process.env.ANYCRAWL_API_DB_TYPE}`);
   const dbType = process.env.ANYCRAWL_API_DB_TYPE?.toLowerCase();
   switch (dbType) {
     case "sqlite":

@@ -10,7 +10,7 @@ export const baseSchema = z.object({
   /**
    * The engine to be used
    */
-  engine: z.enum(AVAILABLE_ENGINES),
+  engine: z.enum(AVAILABLE_ENGINES).default("cheerio"),
 });
 
 export type BaseSchema = z.infer<typeof baseSchema>;

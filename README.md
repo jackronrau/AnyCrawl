@@ -58,26 +58,42 @@ Built with modern architectures and optimized for LLMs (Large Language Models), 
 
 ```typescript
 
+curl --location 'http://localhost:8080/v1/scrape' \
+--header 'Content-Type: application/json' \
+--data '{
+    "url": "https://example.com/",
+    "engine": "playwright"
+}'
+
 ```
 
 #### Parameters
 
-| Parameter | Type | Description |
-| --------- | ---- | ----------- |
+| Parameter | Type   | Description                                                                                                                                                                                           |
+| --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| url       | string | The URL to be scraped. Must be a valid URL starting with http:// or https://                                                                                                                          |
+| engine    | string | Scraping engine to use. Options: `cheerio` (static HTML parsing, fastest), `playwright` (JavaScript rendering with modern engine), `puppeteer` (JavaScript rendering with Chrome). Default: `cheerio` |
 
 ### Search Engine Results (SERP)
 
 #### Basic Usage
 
 ```typescript
-
+curl --location 'http://localhost:8080/v1/search' \
+--header 'Content-Type: application/json' \
+--data '{
+    "query": "search keyword"
+}'
 ```
 
 #### Parameters
 
-| Parameter | Type   | Description  |
-| --------- | ------ | ------------ |
-| `query`   | string | Search query |
+| Parameter | Type    | Description                                         | Default |
+| --------- | ------- | --------------------------------------------------- | ------- |
+| `engine`  | string  | Search engine to use. Options: `google`             | google  |
+| `query`   | string  | Search query to be executed                         | -       |
+| `pages`   | integer | Number of search result pages to retrieve           | 1       |
+| `lang`    | string  | Language code for search results (e.g., 'en', 'zh') | en-US   |
 
 #### Supported Search Engines
 

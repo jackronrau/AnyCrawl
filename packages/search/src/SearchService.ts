@@ -145,7 +145,7 @@ export class SearchService {
     uniqueKey: string
   ): Promise<void> {
     try {
-      log.info(`Executing search for: ${engineName} ${options}`);
+      log.info(`Executing search for: ${engineName} ${JSON.stringify(options)}`);
 
       const engine = this.getEngine(engineName);
       const tasks: SearchTask[] = [];
@@ -158,7 +158,7 @@ export class SearchService {
           })
         );
       }
-      console.log(tasks);
+      log.info(`Tasks: ${JSON.stringify(tasks)}`);
       log.info(`Got request data: ${tasks.length} requests`);
 
       if (!this.searchQueue) {
