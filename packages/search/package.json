@@ -6,9 +6,7 @@
   "scripts": {
     "drizzle": "dotenv-run -r ../.. ",
     "watch": "tsc --watch",
-    "build": "tsc",
-    "dev": "pnpm run drizzle -- tsx ./src/Worker.ts",
-    "start": "pnpm run drizzle -- tsc && node dist/Worker.js"
+    "build": "tsc"
   },
   "exports": {
     "./SearchService": {

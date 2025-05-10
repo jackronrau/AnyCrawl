@@ -10,7 +10,7 @@ export const checkCreditsMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   // Skip credits check if auth is disabled
-  if (process.env.API_AUTH_ENABLED !== "true") {
+  if (process.env.ANYCRAWL_API_AUTH_ENABLED !== "true") {
     next();
     return;
   }

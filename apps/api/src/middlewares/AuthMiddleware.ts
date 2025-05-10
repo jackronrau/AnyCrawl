@@ -8,8 +8,8 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  // check API_AUTH_ENABLED is true, default is disabled
-  if (process.env.API_AUTH_ENABLED !== "true") {
+  // check ANYCRAWL_API_AUTH_ENABLED is true, default is disabled
+  if (process.env.ANYCRAWL_API_AUTH_ENABLED !== "true") {
     next();
     return;
   }

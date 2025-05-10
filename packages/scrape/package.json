@@ -6,7 +6,7 @@
     "drizzle": "dotenv-run -r ../.. ",
     "watch": "tsc --watch",
     "build": "tsc",
-    "dev": "pnpm run drizzle -- tsx ./src/Worker.ts",
+    "dev": "nodemon --watch src -e ts,json --exec 'pnpm run drizzle -- tsx ./src/Worker.ts'",
     "start": "pnpm run drizzle -- tsc && node dist/Worker.js",
     "test": "tsx src/Test.ts"
   },
@@ -28,6 +28,7 @@
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "eslint": "^9.22.0",
+    "nodemon": "^3.0.3",
     "typescript": "5.8.2"
   },
   "dependencies": {

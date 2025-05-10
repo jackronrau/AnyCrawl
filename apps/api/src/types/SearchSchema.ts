@@ -3,7 +3,7 @@ import { SearchLocale } from "@repo/search/engines/types";
 import { AVAILABLE_SEARCH_ENGINES } from "@repo/search/SearchService";
 
 const searchSchema = z.object({
-  engine: z.enum(AVAILABLE_SEARCH_ENGINES),
+  engine: z.enum(AVAILABLE_SEARCH_ENGINES).optional(),
   query: z.string(),
   limit: z.number().optional(),
   offset: z.number().optional(),

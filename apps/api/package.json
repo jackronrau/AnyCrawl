@@ -10,9 +10,9 @@
     "start": "NODE_ENV=production node -r esbuild-register ./dist/index.js",
     "db:generate": "pnpm run drizzle -- drizzle-kit generate",
     "db:migrate": "pnpm run drizzle -- drizzle-kit migrate",
-    "test": "jest ",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test": "pnpm run drizzle -- jest --detectOpenHandles --forceExit",
+    "test:watch": "pnpm run drizzle -- jest --watch --detectOpenHandles",
+    "test:coverage": "pnpm run drizzle -- jest --coverage --detectOpenHandles --forceExit"
   },
   "dependencies": {
     "@repo/libs": "workspace:*",

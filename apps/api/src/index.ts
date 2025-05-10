@@ -9,8 +9,8 @@ import { authMiddleware } from "./middlewares/AuthMiddleware";
 import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware";
 import { log, ConsoleStream } from "@repo/libs/log";
 
-const app = express();
-const port = process.env.API_PORT || 8080;
+export const app = express();
+const port = process.env.ANYCRAWL_API_PORT || 8080;
 
 app.disable("x-powered-by");
 app.use(cors());
@@ -24,6 +24,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(responseTime());
 app.use(logMiddleware);
+
+// Mount root router before auth middleware
+app.get("/", (_req: express.Request, res: express.Response) => {
+  res.send("Hello World");
+});
+
 // check Auth
 app.use(authMiddleware);
 // check credits
@@ -32,6 +38,8 @@ app.use(checkCreditsMiddleware);
 app.use("/v1", v1Router);
 
 // Start the server
-app.listen(port, async () => {
+const server = app.listen(port, async () => {
   log.info(`✨ Server is running on port ${port}`);
 });
+
+export { server };

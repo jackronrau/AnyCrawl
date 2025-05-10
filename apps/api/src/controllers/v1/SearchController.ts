@@ -57,7 +57,7 @@ export class SearchController {
           error: "Validation error",
           details: {
             issues: formattedErrors,
-            message: error.message,
+            messages: error.errors.map((err) => err.message),
           },
         });
       } else {

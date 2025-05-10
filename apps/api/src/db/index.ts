@@ -7,7 +7,7 @@ import { Client } from "pg";
 import { log } from "@repo/libs/log";
 
 export const schemas = (
-  process.env.API_DB_TYPE?.toLowerCase() === "sqlite" ? sqliteSchema : postgresqlSchema
+  process.env.ANYCRAWL_API_DB_TYPE?.toLowerCase() === "sqlite" ? sqliteSchema : postgresqlSchema
 ) as any;
 
 let dbInstance: ReturnType<typeof drizzle> | ReturnType<typeof drizzleSQLite> | null = null;
@@ -15,19 +15,19 @@ let dbInstance: ReturnType<typeof drizzle> | ReturnType<typeof drizzleSQLite> | 
 export const initializeDatabase = async () => {
   if (dbInstance) return dbInstance;
 
-  const dbType = process.env.API_DB_TYPE?.toLowerCase();
+  const dbType = process.env.ANYCRAWL_API_DB_TYPE?.toLowerCase();
   switch (dbType) {
     case "sqlite":
       log.info("Using SQLite database");
-      const sqlite = new Database(process.env.API_DB_CONNECTION);
+      const sqlite = new Database(process.env.ANYCRAWL_API_DB_CONNECTION);
       dbInstance = drizzleSQLite(sqlite, { schema: sqliteSchema });
       return dbInstance;
     case "postgresql":
       log.info("Using PostgreSQL database");
-      if (!process.env.API_DB_CONNECTION) {
+      if (!process.env.ANYCRAWL_API_DB_CONNECTION) {
         throw new Error("Database connection string is required");
       }
-      const client = new Client(process.env.API_DB_CONNECTION);
+      const client = new Client(process.env.ANYCRAWL_API_DB_CONNECTION);
       try {
         await client.connect();
         log.info("PostgreSQL connection established");
@@ -39,7 +39,7 @@ export const initializeDatabase = async () => {
       }
     default:
       throw new Error(
-        `Unsupported database type: ${dbType}. Please set API_DB_TYPE to one of: postgresql, sqlite`
+        `Unsupported database type: ${dbType}. Please set ANYCRAWL_API_DB_TYPE to one of: postgresql, sqlite`
       );
   }
 };

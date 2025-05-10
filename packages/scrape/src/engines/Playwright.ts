@@ -2,6 +2,7 @@ import { htmlToMarkdown } from "@repo/libs/html-to-markdown";
 import { BaseEngine, EngineOptions } from "./Base.js";
 import {
   BrowserName,
+  CrawlingContext,
   DeviceCategory,
   Dictionary,
   OperatingSystemsName,
@@ -125,7 +126,7 @@ export class PlaywrightEngine extends BaseEngine {
       ...this.options,
       requestHandler,
       failedRequestHandler,
-      headless: process.env.HEADLESS === "false" ? false : true,
+      headless: process.env.ANYCRAWL_HEADLESS === "false" ? false : true,
     };
 
     crawlerOptions.autoscaledPoolOptions = {

@@ -36,24 +36,34 @@ export class CheerioEngine extends BaseEngine {
     }
 
     const defaultRequestHandler = async (context: CheerioCrawlingContext<Dictionary>) => {
-      const { request, $ } = context;
+      const { request, $, body } = context;
       const jobId = request.userData["jobId"];
-      const metadata = $("meta")
-        .toArray()
-        .reduce<Record<string, string>>((acc, el) => {
-          const $el = $(el);
-          const name = $el.attr("name") || $el.attr("property");
-          const content = $el.attr("content");
-          if (name && content) {
-            acc[name] = content;
-          }
-          return acc;
-        }, {});
-      const html = $("html").html() || "";
+      let metadata: any[] = [];
+      let html = body.toString("utf-8");
+      let title = "";
+
+      if (typeof $ === "function") {
+        metadata = Object.entries(
+          $("meta")
+            .toArray()
+            .reduce<Record<string, string>>((acc, el) => {
+              const $el = $(el);
+              const name = $el.attr("name") || $el.attr("property");
+              const content = $el.attr("content");
+              if (name && content) {
+                acc[name] = content;
+              }
+              return acc;
+            }, {})
+        ).map(([key, value]) => ({ key, value }));
+        html = $("html").html() || body.toString("utf-8");
+        title = $("title").text();
+      }
+
       const data = {
         job_id: jobId,
         url: request.url,
-        title: $("title").text(),
+        title,
         html,
         markdown: htmlToMarkdown(html),
         metadata,
