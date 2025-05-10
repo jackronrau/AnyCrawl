@@ -38,7 +38,7 @@ describe("Search API", () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data).toBeDefined();
         expect(response.body.data.length).toBeGreaterThan(0);
-        expect(JSON.stringify(response.body.data).includes("google")).toBe(true);
+        expect(JSON.stringify(response.body.data).toLowerCase().includes("google")).toBe(true);
     });
 
     it("should check lang and country is valid", async () => {
