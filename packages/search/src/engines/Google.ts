@@ -1,6 +1,6 @@
 import { SearchEngine, SearchOptions, SearchResult, SearchTask } from "./types.js";
 import { google } from "../data/Google.js";
-import { log } from "@repo/libs/log";
+import { log } from "@anycrawl/libs/log";
 import * as cheerio from "cheerio";
 
 export class GoogleSearchEngine implements SearchEngine {

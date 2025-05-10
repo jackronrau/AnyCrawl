@@ -2,7 +2,7 @@ import { Response, NextFunction } from "express";
 import { getDB, schemas } from "../db";
 import { eq } from "drizzle-orm";
 import { RequestWithAuth } from "../types/Types";
-import { log } from "@repo/libs/log";
+import { log } from "@anycrawl/libs/log";
 
 export const checkCreditsMiddleware = async (
     req: RequestWithAuth,

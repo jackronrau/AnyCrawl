@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { requestLog } from "../db/schemas/PostgreSQL";
 import { getDB } from "../db";
-import { log } from "@repo/libs/log";
+import { log } from "@anycrawl/libs/log";
 
 export const logMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const startTime = process.hrtime();

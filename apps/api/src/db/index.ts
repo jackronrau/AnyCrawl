@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 import * as sqliteSchema from "./schemas/SQLite";
 import * as postgresqlSchema from "./schemas/PostgreSQL";
 import { Client } from "pg";
-import { log } from "@repo/libs/log";
+import { log } from "@anycrawl/libs/log";
 
 export const schemas = (
     process.env.ANYCRAWL_API_DB_TYPE?.toLowerCase() === "sqlite" ? sqliteSchema : postgresqlSchema

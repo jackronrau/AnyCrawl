@@ -1,11 +1,8 @@
 import { SearchEngine, SearchOptions, SearchResult, SearchTask } from "./engines/types.js";
 import { GoogleSearchEngine } from "./engines/Google.js";
-import { EngineQueueManager } from "@repo/scrape/managers/EngineQueue";
-import { Utils } from "@repo/scrape/Utils";
+import { EngineQueueManager, Utils, CheerioEngine, CrawlingContext } from "@anycrawl/scrape";
 import { randomUUID } from "node:crypto";
-import { CheerioEngine } from "@repo/scrape/engines/Cheerio";
-import { CrawlingContext } from "@repo/scrape/engines/Base";
-import { log } from "@repo/libs/log";
+import { log } from "@anycrawl/libs";
 
 export const AVAILABLE_SEARCH_ENGINES = ["google"] as const;
 

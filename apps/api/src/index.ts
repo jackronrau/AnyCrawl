@@ -7,7 +7,7 @@ import responseTime from "response-time";
 import { logMiddleware } from "./middlewares/LogMiddleware";
 import { authMiddleware } from "./middlewares/AuthMiddleware";
 import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware";
-import { log, ConsoleStream } from "@repo/libs/log";
+import { log, ConsoleStream } from "@anycrawl/libs/log";
 
 export const app = express();
 const port = process.env.ANYCRAWL_API_PORT || 8080;

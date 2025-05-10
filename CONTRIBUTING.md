@@ -12,21 +12,21 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 
 1. Check if the bug has already been reported in the Issues section
 2. If not, create a new issue with:
-   - Clear and descriptive title
-   - Steps to reproduce
-   - Expected behavior
-   - Actual behavior
-   - Environment details (OS, Node.js version, etc.)
-   - Screenshots if applicable
+    - Clear and descriptive title
+    - Steps to reproduce
+    - Expected behavior
+    - Actual behavior
+    - Environment details (OS, Node.js version, etc.)
+    - Screenshots if applicable
 
 ### Suggesting Features
 
 1. Check if the feature has already been suggested
 2. Create a new issue with:
-   - Clear and descriptive title
-   - Detailed description of the feature
-   - Use cases and benefits
-   - Any implementation ideas you have
+    - Clear and descriptive title
+    - Detailed description of the feature
+    - Use cases and benefits
+    - Any implementation ideas you have
 
 ### Pull Requests
 

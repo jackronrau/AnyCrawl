@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { SearchService } from "@repo/search/SearchService";
-import { log } from "@repo/libs/log";
+import { SearchService } from "@anycrawl/search/SearchService";
+import { log } from "@anycrawl/libs/log";
 import { searchSchema } from "../../types/SearchSchema";
 
 export class SearchController {

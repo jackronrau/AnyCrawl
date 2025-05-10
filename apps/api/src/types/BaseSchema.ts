@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AVAILABLE_ENGINES } from "@repo/scrape/managers/EngineQueue";
+import { AVAILABLE_ENGINES } from "@anycrawl/scrape/managers/EngineQueue";
 
 export const baseSchema = z.object({
     /**

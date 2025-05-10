@@ -1,23 +1,29 @@
 {
-    "name": "@repo/libs",
+    "name": "@anycrawl/libs",
     "version": "0.0.1-beta.1",
     "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "scripts": {
         "watch": "tsc --watch",
         "build": "tsc"
     },
     "exports": {
+        ".": {
+            "import": "./src/index.ts",
+            "default": "./dist/index.js"
+        },
         "./html-to-markdown": {
-            "types": "./src/html-to-markdown.ts",
+            "import": "./src/html-to-markdown.ts",
             "default": "./dist/html-to-markdown.js"
         },
         "./log": {
-            "types": "./src/log.ts",
+            "import": "./src/log.ts",
             "default": "./dist/log.js"
         }
     },
     "devDependencies": {
-        "@repo/typescript-config": "workspace:*",
+        "@anycrawl/typescript-config": "workspace:*",
         "@types/turndown": "^5.0.5",
         "typescript": "latest"
     },

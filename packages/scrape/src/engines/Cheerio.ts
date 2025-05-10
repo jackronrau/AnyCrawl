@@ -1,7 +1,7 @@
 import { Utils } from "../Utils.js";
 import { BaseEngine, EngineOptions } from "./Base.js";
 import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from "crawlee";
-import { htmlToMarkdown } from "@repo/libs/html-to-markdown";
+import { htmlToMarkdown } from "@anycrawl/libs/html-to-markdown";
 
 /**
  * CheerioEngine class for web scraping using Cheerio

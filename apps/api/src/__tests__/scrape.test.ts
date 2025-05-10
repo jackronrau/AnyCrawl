@@ -24,7 +24,7 @@ describe("Scrape API", () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data.status).toBe("failed");
         expect(response.body.data.error.toLowerCase()).toContain("request blocked");
-    });
+    }, 10000);
     it("should return success when 200 ok with cheerio", async () => {
         const response = await request(TEST_URL).post("/v1/scrape").timeout(TIMEOUT).send({
             url: "https://httpstat.us/200",
@@ -34,7 +34,7 @@ describe("Scrape API", () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data.status).toBe("completed");
         expect(response.body.data.html.toLowerCase()).toContain("200 ok");
-    });
+    }, 10000);
 
     it("should return success when 200 ok with playwright", async () => {
         const response = await request(TEST_URL).post("/v1/scrape").timeout(TIMEOUT).send({
@@ -45,7 +45,7 @@ describe("Scrape API", () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data.status).toBe("completed");
         expect(response.body.data.html.toLowerCase()).toContain("200 ok");
-    });
+    }, 10000);
     it("should return success when 200 ok with puppeteer", async () => {
         const response = await request(TEST_URL).post("/v1/scrape").timeout(TIMEOUT).send({
             url: "https://httpstat.us/200",

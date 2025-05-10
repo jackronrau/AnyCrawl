@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { scrapeSchema } from "../../types/ScrapeSchema";
-import { QueueManager } from "@repo/scrape/managers/Queue";
+import { QueueManager } from "@anycrawl/scrape/managers/Queue";
 
 export class ScrapeController {
     public handle = async (req: Request, res: Response): Promise<void> => {
