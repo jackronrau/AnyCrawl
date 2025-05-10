@@ -1,211 +1,211 @@
 {
-  "id": "5efbc1cd-ce09-4eb5-a674-a5401156aa53",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "version": "7",
-  "dialect": "postgresql",
-  "tables": {
-    "public.api_key": {
-      "name": "api_key",
-      "schema": "",
-      "columns": {
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
+    "id": "5efbc1cd-ce09-4eb5-a674-a5401156aa53",
+    "prevId": "00000000-0000-0000-0000-000000000000",
+    "version": "7",
+    "dialect": "postgresql",
+    "tables": {
+        "public.api_key": {
+            "name": "api_key",
+            "schema": "",
+            "columns": {
+                "uuid": {
+                    "name": "uuid",
+                    "type": "uuid",
+                    "primaryKey": true,
+                    "notNull": true
+                },
+                "key": {
+                    "name": "key",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "name": {
+                    "name": "name",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false,
+                    "default": "'default'"
+                },
+                "is_active": {
+                    "name": "is_active",
+                    "type": "boolean",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": true
+                },
+                "created_by": {
+                    "name": "created_by",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": false,
+                    "default": -1
+                },
+                "hashed_key": {
+                    "name": "hashed_key",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "salt": {
+                    "name": "salt",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "credits": {
+                    "name": "credits",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": 0
+                },
+                "created_at": {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "last_used_at": {
+                    "name": "last_used_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "expires_at": {
+                    "name": "expires_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": false
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {
+                "api_key_key_unique": {
+                    "name": "api_key_key_unique",
+                    "nullsNotDistinct": false,
+                    "columns": ["key"]
+                }
+            },
+            "policies": {},
+            "checkConstraints": {},
+            "isRLSEnabled": false
         },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'default'"
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "default": -1
-        },
-        "hashed_key": {
-          "name": "hashed_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "salt": {
-          "name": "salt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "credits": {
-          "name": "credits",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
+        "public.request_log": {
+            "name": "request_log",
+            "schema": "",
+            "columns": {
+                "uuid": {
+                    "name": "uuid",
+                    "type": "uuid",
+                    "primaryKey": true,
+                    "notNull": true
+                },
+                "api_key_id": {
+                    "name": "api_key_id",
+                    "type": "uuid",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "path": {
+                    "name": "path",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "method": {
+                    "name": "method",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "status_code": {
+                    "name": "status_code",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "processing_time_ms": {
+                    "name": "processing_time_ms",
+                    "type": "real",
+                    "primaryKey": false,
+                    "notNull": true
+                },
+                "credits_used": {
+                    "name": "credits_used",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": 0
+                },
+                "ip_address": {
+                    "name": "ip_address",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "user_agent": {
+                    "name": "user_agent",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "request_payload": {
+                    "name": "request_payload",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "request_header": {
+                    "name": "request_header",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false
+                },
+                "success": {
+                    "name": "success",
+                    "type": "boolean",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "default": true
+                },
+                "created_at": {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "primaryKey": false,
+                    "notNull": true
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {
+                "request_log_api_key_id_api_key_uuid_fk": {
+                    "name": "request_log_api_key_id_api_key_uuid_fk",
+                    "tableFrom": "request_log",
+                    "tableTo": "api_key",
+                    "columnsFrom": ["api_key_id"],
+                    "columnsTo": ["uuid"],
+                    "onDelete": "no action",
+                    "onUpdate": "no action"
+                }
+            },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {},
+            "policies": {},
+            "checkConstraints": {},
+            "isRLSEnabled": false
         }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "api_key_key_unique": {
-          "name": "api_key_key_unique",
-          "nullsNotDistinct": false,
-          "columns": ["key"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
     },
-    "public.request_log": {
-      "name": "request_log",
-      "schema": "",
-      "columns": {
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "api_key_id": {
-          "name": "api_key_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "path": {
-          "name": "path",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status_code": {
-          "name": "status_code",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "processing_time_ms": {
-          "name": "processing_time_ms",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "credits_used": {
-          "name": "credits_used",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "ip_address": {
-          "name": "ip_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "user_agent": {
-          "name": "user_agent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "request_payload": {
-          "name": "request_payload",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "request_header": {
-          "name": "request_header",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "success": {
-          "name": "success",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "request_log_api_key_id_api_key_uuid_fk": {
-          "name": "request_log_api_key_id_api_key_uuid_fk",
-          "tableFrom": "request_log",
-          "tableTo": "api_key",
-          "columnsFrom": ["api_key_id"],
-          "columnsTo": ["uuid"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    }
-  },
-  "enums": {},
-  "schemas": {},
-  "sequences": {},
-  "roles": {},
-  "policies": {},
-  "views": {},
-  "_meta": {
-    "columns": {},
+    "enums": {},
     "schemas": {},
-    "tables": {}
-  }
+    "sequences": {},
+    "roles": {},
+    "policies": {},
+    "views": {},
+    "_meta": {
+        "columns": {},
+        "schemas": {},
+        "tables": {}
+    }
 }

@@ -2,8 +2,8 @@ import { z } from "zod";
 import { baseSchema } from "./BaseSchema";
 
 export const scrapeSchema = baseSchema.pick({
-  url: true,
-  engine: true,
+    url: true,
+    engine: true,
 });
 
 export type ScrapeSchema = z.infer<typeof scrapeSchema>;

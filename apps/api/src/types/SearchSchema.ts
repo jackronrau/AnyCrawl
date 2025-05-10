@@ -3,13 +3,13 @@ import { SearchLocale } from "@repo/search/engines/types";
 import { AVAILABLE_SEARCH_ENGINES } from "@repo/search/SearchService";
 
 const searchSchema = z.object({
-  engine: z.enum(AVAILABLE_SEARCH_ENGINES).optional(),
-  query: z.string(),
-  limit: z.number().optional(),
-  offset: z.number().optional(),
-  pages: z.number().optional(),
-  lang: z.custom<SearchLocale>().optional(),
-  country: z.custom<SearchLocale>().optional(),
+    engine: z.enum(AVAILABLE_SEARCH_ENGINES).optional(),
+    query: z.string(),
+    limit: z.number().optional(),
+    offset: z.number().optional(),
+    pages: z.number().optional(),
+    lang: z.custom<SearchLocale>().optional(),
+    country: z.custom<SearchLocale>().optional(),
 });
 
 export type SearchSchema = z.infer<typeof searchSchema>;

@@ -5,10 +5,10 @@ import { createElement } from "react";
 import { i18n } from "./i18n";
 
 export const source = loader({
-  baseUrl: "/docs",
-  icon(icon) {
-    if (icon && icon in icons) return createElement(icons[icon as keyof typeof icons]);
-  },
-  source: docs.toFumadocsSource(),
-  i18n,
+    baseUrl: "/docs",
+    icon(icon) {
+        if (icon && icon in icons) return createElement(icons[icon as keyof typeof icons]);
+    },
+    source: docs.toFumadocsSource(),
+    i18n,
 });

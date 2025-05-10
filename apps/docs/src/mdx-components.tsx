@@ -7,19 +7,19 @@ import * as icons from "lucide-react";
 import { OpenAPIIcon, GithubIcon, OpenAIIcon } from "@/components/icons";
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
-  return {
-    ...(icons as unknown as MDXComponents),
-    ...defaultMdxComponents,
-    File,
-    Files,
-    Folder,
-    Tabs,
-    Tab,
-    Accordion,
-    Accordions,
-    ...components,
-    OpenAPIIcon,
-    GithubIcon,
-    OpenAIIcon,
-  };
+    return {
+        ...(icons as unknown as MDXComponents),
+        ...defaultMdxComponents,
+        File,
+        Files,
+        Folder,
+        Tabs,
+        Tab,
+        Accordion,
+        Accordions,
+        ...components,
+        OpenAPIIcon,
+        GithubIcon,
+        OpenAIIcon,
+    };
 }

@@ -4,28 +4,28 @@ import { baseOptions } from "@/app/layout.config";
 import { source } from "@/lib/source";
 
 export default async function Layout({
-  params,
-  children,
+    params,
+    children,
 }: {
-  params: Promise<{ lang: string }>;
-  children: ReactNode;
+    params: Promise<{ lang: string }>;
+    children: ReactNode;
 }) {
-  const { lang } = await params;
+    const { lang } = await params;
 
-  return (
-    <DocsLayout
-      sidebar={{
-        tabs: {
-          transform: (option, node) => ({
-            ...option,
-            icon: "my icon",
-          }),
-        },
-      }}
-      tree={source.pageTree[lang]}
-      {...baseOptions}
-    >
-      {children}
-    </DocsLayout>
-  );
+    return (
+        <DocsLayout
+            sidebar={{
+                tabs: {
+                    transform: (option, node) => ({
+                        ...option,
+                        icon: "my icon",
+                    }),
+                },
+            }}
+            tree={source.pageTree[lang]}
+            {...baseOptions}
+        >
+            {children}
+        </DocsLayout>
+    );
 }

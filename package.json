@@ -1,31 +1,31 @@
 {
-  "name": "anycrawl",
-  "private": true,
-  "scripts": {
-    "watch": "turbo run watch",
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "start": "turbo run start",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "format": "prettier --write --config .prettierrc \"**/*.{js,jsx,ts,tsx,json,css,scss}\"",
-    "check-types": "turbo run check-types",
-    "scrape:dev": "cd packages/scrape && pnpm dev",
-    "scrape:start": "cd packages/scrape && pnpm start",
-    "scrape:test": "cd packages/scrape && pnpm test",
-    "api:dev": "cd apps/api && pnpm dev",
-    "api:start": "cd apps/api && pnpm start",
-    "api:build": "cd apps/api && pnpm build",
-    "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps",
-    "scrape:puppeteer:install": "cd packages/scrape && pnpm puppeteer browsers install chrome"
-  },
-  "devDependencies": {
-    "prettier": "^3.5.3",
-    "turbo": "^2.4.4",
-    "typescript": "5.8.2"
-  },
-  "packageManager": "pnpm@10.10.0",
-  "engines": {
-    "node": ">=18"
-  }
+    "name": "anycrawl",
+    "private": true,
+    "scripts": {
+        "watch": "turbo run watch",
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "start": "turbo run start",
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "format": "prettier --write --config .prettierrc \"**/*.{js,jsx,ts,tsx,json,css,scss}\"",
+        "check-types": "turbo run check-types",
+        "scrape:dev": "cd packages/scrape && pnpm dev",
+        "scrape:start": "cd packages/scrape && pnpm start",
+        "scrape:test": "cd packages/scrape && pnpm test",
+        "api:dev": "cd apps/api && pnpm dev",
+        "api:start": "cd apps/api && pnpm start",
+        "api:build": "cd apps/api && pnpm build",
+        "scrape:playwright:install": "cd packages/scrape && pnpm playwright install --with-deps",
+        "scrape:puppeteer:install": "cd packages/scrape && pnpm puppeteer browsers install chrome"
+    },
+    "devDependencies": {
+        "prettier": "^3.5.3",
+        "turbo": "^2.4.4",
+        "typescript": "5.8.2"
+    },
+    "packageManager": "pnpm@10.10.0",
+    "engines": {
+        "node": ">=18"
+    }
 }

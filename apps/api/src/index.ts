@@ -15,9 +15,9 @@ const port = process.env.ANYCRAWL_API_PORT || 8080;
 app.disable("x-powered-by");
 app.use(cors());
 app.use(
-  morgan(process.env.NODE_ENV === "development" ? "dev" : "combined", {
-    stream: new ConsoleStream(),
-  })
+    morgan(process.env.NODE_ENV === "development" ? "dev" : "combined", {
+        stream: new ConsoleStream(),
+    })
 );
 
 app.use(bodyParser.json());
@@ -27,7 +27,7 @@ app.use(logMiddleware);
 
 // Mount root router before auth middleware
 app.get("/", (_req: express.Request, res: express.Response) => {
-  res.send("Hello World");
+    res.send("Hello World");
 });
 
 // check Auth
@@ -39,7 +39,7 @@ app.use("/v1", v1Router);
 
 // Start the server
 const server = app.listen(port, async () => {
-  log.info(`✨ Server is running on port ${port}`);
+    log.info(`✨ Server is running on port ${port}`);
 });
 
 export { server };

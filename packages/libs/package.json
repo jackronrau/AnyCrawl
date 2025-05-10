@@ -1,28 +1,28 @@
 {
-  "name": "@repo/libs",
-  "version": "0.0.1-beta.1",
-  "type": "module",
-  "scripts": {
-    "watch": "tsc --watch",
-    "build": "tsc"
-  },
-  "exports": {
-    "./html-to-markdown": {
-      "types": "./src/html-to-markdown.ts",
-      "default": "./dist/html-to-markdown.js"
+    "name": "@repo/libs",
+    "version": "0.0.1-beta.1",
+    "type": "module",
+    "scripts": {
+        "watch": "tsc --watch",
+        "build": "tsc"
     },
-    "./log": {
-      "types": "./src/log.ts",
-      "default": "./dist/log.js"
+    "exports": {
+        "./html-to-markdown": {
+            "types": "./src/html-to-markdown.ts",
+            "default": "./dist/html-to-markdown.js"
+        },
+        "./log": {
+            "types": "./src/log.ts",
+            "default": "./dist/log.js"
+        }
+    },
+    "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/turndown": "^5.0.5",
+        "typescript": "latest"
+    },
+    "dependencies": {
+        "turndown": "^7.2.0",
+        "crawlee": "^3.13.0"
     }
-  },
-  "devDependencies": {
-    "@repo/typescript-config": "workspace:*",
-    "@types/turndown": "^5.0.5",
-    "typescript": "latest"
-  },
-  "dependencies": {
-    "turndown": "^7.2.0",
-    "crawlee": "^3.13.0"
-  }
 }
