@@ -1,12 +1,12 @@
 import express from "express";
-import v1Router from "./routers/v1";
+import v1Router from "./routers/v1.js";
 import bodyParser from "body-parser";
 import cors from "cors";
 import morgan from "morgan";
 import responseTime from "response-time";
-import { logMiddleware } from "./middlewares/LogMiddleware";
-import { authMiddleware } from "./middlewares/AuthMiddleware";
-import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware";
+import { logMiddleware } from "./middlewares/LogMiddleware.js";
+import { authMiddleware } from "./middlewares/AuthMiddleware.js";
+import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware.js";
 import { log, ConsoleStream } from "@anycrawl/libs/log";
 
 export const app = express();

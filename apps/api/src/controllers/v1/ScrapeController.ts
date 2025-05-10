@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { scrapeSchema } from "../../types/ScrapeSchema";
+import { scrapeSchema } from "../../types/ScrapeSchema.js";
 import { QueueManager } from "@anycrawl/scrape/managers/Queue";
 
 export class ScrapeController {

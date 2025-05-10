@@ -1,8 +1,7 @@
-import { Router } from "express";
-import express from "express";
-import { ScrapeController } from "../controllers/v1/ScrapeController";
-import { SearchController } from "../controllers/v1/SearchController";
-import { controllerWrapper } from "../utils/AsyncHandler";
+import express, { Router } from "express";
+import { ScrapeController } from "../controllers/v1/ScrapeController.js";
+import { SearchController } from "../controllers/v1/SearchController.js";
+import { controllerWrapper } from "../utils/AsyncHandler.js";
 
 const router: express.Router = Router();
 const scrapeController = new ScrapeController();

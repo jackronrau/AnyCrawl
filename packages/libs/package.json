@@ -10,15 +10,15 @@
     },
     "exports": {
         ".": {
-            "import": "./src/index.ts",
+            "import": "./dist/index.js",
             "default": "./dist/index.js"
         },
         "./html-to-markdown": {
-            "import": "./src/html-to-markdown.ts",
+            "import": "./dist/html-to-markdown.js",
             "default": "./dist/html-to-markdown.js"
         },
         "./log": {
-            "import": "./src/log.ts",
+            "import": "./dist/log.js",
             "default": "./dist/log.js"
         }
     },

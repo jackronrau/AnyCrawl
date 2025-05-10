@@ -9,12 +9,19 @@
         "build": "tsc"
     },
     "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        },
         "./SearchService": {
-            "import": "./src/SearchService.ts",
+            "types": "./dist/SearchService.d.ts",
+            "import": "./dist/SearchService.js",
             "default": "./dist/SearchService.js"
         },
         "./engines/types": {
-            "import": "./src/engines/types.ts",
+            "types": "./dist/engines/types.d.ts",
+            "import": "./dist/engines/types.js",
             "default": "./dist/engines/types.js"
         }
     },

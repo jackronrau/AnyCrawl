@@ -1,8 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { drizzle as drizzleSQLite } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import * as sqliteSchema from "./schemas/SQLite";
-import * as postgresqlSchema from "./schemas/PostgreSQL";
+import * as sqliteSchema from "./schemas/SQLite.js";
+import * as postgresqlSchema from "./schemas/PostgreSQL.js";
 import { Client } from "pg";
 import { log } from "@anycrawl/libs/log";
 

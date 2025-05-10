@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { SearchService } from "@anycrawl/search/SearchService";
 import { log } from "@anycrawl/libs/log";
-import { searchSchema } from "../../types/SearchSchema";
+import { searchSchema } from "../../types/SearchSchema.js";
 
 export class SearchController {
     private searchService: SearchService;

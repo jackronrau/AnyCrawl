@@ -1,13 +1,14 @@
 {
     "name": "api",
-    "version": "0.0.0",
+    "version": "0.0.1-alpha.1",
     "private": true,
+    "type": "module",
     "scripts": {
         "drizzle": "dotenv-run -r ../.. ",
         "clean": "rm -rf dist",
-        "dev": "NODE_ENV=development pnpm run drizzle -- nodemon --exec \"node -r esbuild-register ./src/index.ts\" -e .ts",
+        "dev": "NODE_ENV=development pnpm run drizzle -- nodemon --exec \"tsx\" ./src/index.ts",
         "build": "NODE_ENV=production pnpm run drizzle -- pnpm run clean && tsc",
-        "start": "NODE_ENV=production node -r esbuild-register ./dist/index.js",
+        "start": "NODE_ENV=production node ./dist/index.js",
         "db:generate": "pnpm run drizzle -- drizzle-kit generate",
         "db:migrate": "pnpm run drizzle -- drizzle-kit migrate",
         "test": "pnpm run drizzle -- jest --detectOpenHandles --forceExit",
@@ -48,6 +49,7 @@
         "esbuild-register": "^3.6.0",
         "jest": "^29.7.0",
         "supertest": "^7.1.0",
-        "ts-jest": "^29.3.2"
+        "ts-jest": "^29.3.2",
+        "tsx": "^4.7.1"
     }
 }
