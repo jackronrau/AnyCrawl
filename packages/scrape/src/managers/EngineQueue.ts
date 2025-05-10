@@ -4,7 +4,7 @@ import { CrawlingContext, Dictionary, LaunchContext, log, RequestQueueV2 } from 
 import { Utils } from "../Utils.js";
 import { PlaywrightEngine } from "../engines/Playwright.js";
 import { PuppeteerEngine } from "../engines/Puppeteer.js";
-import { BaseEngine, EngineOptions } from "../engines/Base.js";
+import { EngineOptions } from "../engines/Base.js";
 
 // Define available engine types
 export const AVAILABLE_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
@@ -26,7 +26,7 @@ const defaultOptions: EngineOptions = {
     },
   ],
 };
-
+log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
 const defaultLaunchContext: Partial<LaunchContext> = {
   launchOptions: {
     args: [
@@ -38,10 +38,19 @@ const defaultLaunchContext: Partial<LaunchContext> = {
       "--no-zygote",
       "--single-process",
       "--disable-gpu",
+      // for puppeteer ignore ssl errors
+      ...(process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true"
+        ? ["--ignore-certificate-errors", "--ignore-certificate-errors-spki-list"]
+        : []),
     ],
+    // ignore https errors
+    ignoreHTTPSErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
   },
 };
 
+const defaultHttpOptions: Record<string, any> = {
+  ignoreSslErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
+};
 // Queue manager class to handle all engine queues
 export class EngineQueueManager {
   private static instance: EngineQueueManager;
@@ -128,6 +137,7 @@ export class EngineQueueManager {
         log.error(`Request ${request.url} failed with error: ${error}`);
       },
       additionalMimeTypes: ["text/html", "text/plain", "application/xhtml+xml"],
+      ...defaultHttpOptions,
       ...options,
     });
     return engine;

@@ -117,7 +117,7 @@ export class PuppeteerEngine extends BaseEngine {
       ...this.options,
       requestHandler,
       failedRequestHandler,
-      headless: process.env.HEADLESS === "false" ? false : true,
+      headless: process.env.ANYCRAWL_HEADLESS === "false" ? false : true,
     };
     crawlerOptions.autoscaledPoolOptions = {
       isFinishedFunction: async () => {
