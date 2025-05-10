@@ -69,10 +69,10 @@ curl --location 'http://localhost:8080/v1/scrape' \
 
 #### Parameters
 
-| Parameter | Type   | Description                                                                                                                                                                                           |
-| --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| url       | string | The URL to be scraped. Must be a valid URL starting with http:// or https://                                                                                                                          |
-| engine    | string | Scraping engine to use. Options: `cheerio` (static HTML parsing, fastest), `playwright` (JavaScript rendering with modern engine), `puppeteer` (JavaScript rendering with Chrome). Default: `cheerio` |
+| Parameter | Type              | Description                                                                                                                                                                                           |
+| --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| url       | string (required) | The URL to be scraped. Must be a valid URL starting with http:// or https://                                                                                                                          |
+| engine    | string            | Scraping engine to use. Options: `cheerio` (static HTML parsing, fastest), `playwright` (JavaScript rendering with modern engine), `puppeteer` (JavaScript rendering with Chrome). Default: `cheerio` |
 
 ### Search Engine Results (SERP)
 
@@ -88,12 +88,12 @@ curl --location 'http://localhost:8080/v1/search' \
 
 #### Parameters
 
-| Parameter | Type    | Description                                         | Default |
-| --------- | ------- | --------------------------------------------------- | ------- |
-| `engine`  | string  | Search engine to use. Options: `google`             | google  |
-| `query`   | string  | Search query to be executed                         | -       |
-| `pages`   | integer | Number of search result pages to retrieve           | 1       |
-| `lang`    | string  | Language code for search results (e.g., 'en', 'zh') | en-US   |
+| Parameter | Type              | Description                                         | Default |
+| --------- | ----------------- | --------------------------------------------------- | ------- |
+| `query`   | string (required) | Search query to be executed                         | -       |
+| `engine`  | string            | Search engine to use. Options: `google`             | google  |
+| `pages`   | integer           | Number of search result pages to retrieve           | 1       |
+| `lang`    | string            | Language code for search results (e.g., 'en', 'zh') | en-US   |
 
 #### Supported Search Engines
 
