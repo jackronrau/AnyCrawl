@@ -7,7 +7,20 @@ import { PuppeteerEngine } from "../engines/Puppeteer.js";
 import { EngineOptions } from "../engines/Base.js";
 
 // Define available engine types
-export const AVAILABLE_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
+const ALLOWED_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
+
+export const AVAILABLE_ENGINES = (() => {
+    if (process.env.ANYCRAWL_AVAILABLE_ENGINES) {
+        const engines = process.env.ANYCRAWL_AVAILABLE_ENGINES.split(',').map(e => e.trim().toLowerCase());
+        // Validate that all specified engines are allowed
+        const invalidEngines = engines.filter(e => !ALLOWED_ENGINES.includes(e as any));
+        if (invalidEngines.length > 0) {
+            throw new Error(`Invalid engine types specified: ${invalidEngines.join(', ')}. Allowed engines are: ${ALLOWED_ENGINES.join(', ')}`);
+        }
+        return engines as unknown as typeof ALLOWED_ENGINES;
+    }
+    return ALLOWED_ENGINES;
+})();
 
 export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 
@@ -57,7 +70,7 @@ export class EngineQueueManager {
     private queues: Map<string, RequestQueueV2> = new Map();
     private engines: Map<string, Engine> = new Map();
 
-    private constructor() {}
+    private constructor() { }
 
     async getAvailableEngines(): Promise<EngineType[]> {
         return [...AVAILABLE_ENGINES];
@@ -194,7 +207,7 @@ export class EngineQueueManager {
         for (const [engineType, engine] of this.engines) {
             try {
                 log.info(`Starting crawler for ${engineType}...`);
-                engine.run().then(() => {});
+                engine.run().then(() => { });
             } catch (error) {
                 log.error(`Error starting crawler for ${engineType}: ${error}`);
                 throw error;
