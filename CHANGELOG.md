@@ -11,19 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial project setup with monorepo structure using pnpm workspaces
 - Core web crawling functionality with support for:
-  - Single page content extraction
-  - Multi-threading and multi-process architecture
+    - Single page content extraction
+    - Multi-threading and multi-process architecture
 - SERP (Search Engine Results Page) crawling capabilities
-  - Support for Google search engine
-  - Batch processing capabilities (many pages per request)
+    - Support for Google search engine
+    - Batch processing capabilities (many pages per request)
 - Development environment setup:
-  - TypeScript configuration
-  - Prettier code formatting
-  - Turbo repo configuration for monorepo management
+    - TypeScript configuration
+    - Prettier code formatting
+    - Turbo repo configuration for monorepo management
 - Basic project documentation:
-  - README with project overview and features
-  - Contributing guidelines
-  - MIT License
+    - README with project overview and features
+    - Contributing guidelines
+    - MIT License
+- Docker image for easy deployment and environment consistency
 - Node.js environment requirements (>=18)
 - Package management with pnpm 10.10.0
 
