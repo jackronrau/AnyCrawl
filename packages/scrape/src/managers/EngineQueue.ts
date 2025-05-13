@@ -7,7 +7,7 @@ import { PuppeteerEngine } from "../engines/Puppeteer.js";
 import { EngineOptions } from "../engines/Base.js";
 
 // Define available engine types
-const ALLOWED_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
+export const ALLOWED_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
 
 export const AVAILABLE_ENGINES = (() => {
     if (process.env.ANYCRAWL_AVAILABLE_ENGINES) {

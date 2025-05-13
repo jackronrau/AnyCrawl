@@ -30,6 +30,11 @@ app.get("/", (_req: express.Request, res: express.Response) => {
     res.send("Hello World");
 });
 
+// Health check endpoint
+app.get("/health", (_req: express.Request, res: express.Response) => {
+    res.status(200).json({ status: "ok" });
+});
+
 // check Auth
 app.use(authMiddleware);
 // check credits

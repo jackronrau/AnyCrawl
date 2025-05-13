@@ -1,0 +1,27 @@
+FROM apify/actor-node-puppeteer-chrome AS base
+
+USER root
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+ENV NODE_ENV=production
+RUN corepack enable pnpm
+
+FROM base AS build
+COPY . /usr/src/app
+WORKDIR /usr/src/app
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm build --filter=@anycrawl/scrape --filter=@anycrawl/libs
+
+FROM base AS scrape-puppeteer
+COPY --from=build --chown=myuser:myuser /usr/src/app /usr/src/app
+WORKDIR /usr/src/app
+
+# Set environment variables in the final stage
+ENV ANYCRAWL_AVAILABLE_ENGINES=puppeteer
+WORKDIR /usr/src/app/packages/scrape
+# Switch to non-root user
+USER myuser
+
+CMD [ "node", "dist/Worker.js" ]
+

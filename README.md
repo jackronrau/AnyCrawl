@@ -42,7 +42,7 @@ Built with modern architectures and optimized for LLMs (Large Language Models), 
 ### Docker Deployment
 
 ```bash
-
+docker compose up --build
 ```
 
 ### Environment Variables

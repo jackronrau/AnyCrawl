@@ -54,7 +54,7 @@ export class GoogleSearchEngine implements SearchEngine {
         "UZ", // Uzbekistan (uz)
     ];
 
-    constructor() {}
+    constructor() { }
 
     getName(): string {
         return "Google";
@@ -107,7 +107,7 @@ export class GoogleSearchEngine implements SearchEngine {
 
         const subdomain =
             google.custom.supported_domains[
-                country.toUpperCase() as keyof typeof google.custom.supported_domains
+            country.toUpperCase() as keyof typeof google.custom.supported_domains
             ] || "www.google.com";
         // Set the base URL using the appropriate subdomain
         this.baseUrl = `https://${subdomain}/search`;

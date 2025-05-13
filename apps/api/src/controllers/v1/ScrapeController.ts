@@ -9,7 +9,7 @@ export class ScrapeController {
             // Validate request body against ScrapeSchema
             const validatedData = scrapeSchema.parse(req.body);
 
-            const jobId = await QueueManager.getInstance().addJob("scrape", {
+            const jobId = await QueueManager.getInstance().addJob(`scrape-${validatedData.engine}`, {
                 url: validatedData.url,
                 engine: validatedData.engine,
                 options: {
@@ -17,7 +17,7 @@ export class ScrapeController {
                 },
             });
             // waiting job done
-            const job = await QueueManager.getInstance().waitJobDone("scrape", jobId);
+            const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             res.json({
                 success: true,

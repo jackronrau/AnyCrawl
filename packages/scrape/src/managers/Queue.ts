@@ -18,7 +18,7 @@ export class QueueManager {
     private static instance: QueueManager;
     private queues: Map<string, Queue> = new Map();
 
-    private constructor() {}
+    private constructor() { }
 
     /**
      * Get the singleton instance of QueueManager

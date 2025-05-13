@@ -1,7 +1,7 @@
 import { WorkerManager } from "./managers/Worker.js";
 import { QueueManager } from "./managers/Queue.js";
 import { Job } from "bullmq";
-import { EngineQueueManager, AVAILABLE_ENGINES } from "./managers/EngineQueue.js";
+import { EngineQueueManager, AVAILABLE_ENGINES, ALLOWED_ENGINES } from "./managers/EngineQueue.js";
 import { log } from "crawlee";
 import { Utils } from "./Utils.js";
 import { randomUUID } from "crypto";
@@ -22,7 +22,7 @@ log.info("All queues and engines initialized and started");
 
 async function runJob(job: Job) {
     const engineType = job.data.engine || "cheerio";
-    if (!AVAILABLE_ENGINES.includes(engineType)) {
+    if (!ALLOWED_ENGINES.includes(engineType)) {
         throw new Error(`Unsupported engine type: ${engineType}`);
     }
     log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
@@ -44,11 +44,14 @@ async function runJob(job: Job) {
     try {
         // Start the worker to handle new URLs
         log.info("Starting worker...");
-        await Promise.all([
-            WorkerManager.getInstance().getWorker("scrape", async (job: Job) => {
-                await runJob(job);
-            }),
-        ]);
+        await Promise.all(
+            // according the available engines, start the worker for each engine
+            AVAILABLE_ENGINES.map((engineType) =>
+                WorkerManager.getInstance().getWorker(`scrape-${engineType}`, async (job: Job) => {
+                    await runJob(job);
+                })
+            )
+        );
         log.info("Worker started successfully");
 
         // Check queue status periodically for all engines
@@ -72,7 +75,7 @@ async function runJob(job: Job) {
             log.warning("Received SIGINT signal, stopping all crawlers...");
             // Temporarily disable console.warn to prevent the pause message
             const originalWarn = console.warn;
-            console.warn = () => {};
+            console.warn = () => { };
 
             // Stop all engines
             await engineQueueManager.stopEngines();
