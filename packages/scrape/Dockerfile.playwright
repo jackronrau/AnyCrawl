@@ -1,27 +1,44 @@
-FROM apify/actor-node-playwright-chrome AS base
-
-USER root
+FROM node:20-bookworm-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
 RUN corepack enable pnpm
 
+RUN npx playwright install-deps
+
+RUN groupadd -r myuser && useradd -m -d /home/myuser -r -g myuser myuser \
+    && mkdir -p /home/myuser && chown -R myuser:myuser /home/myuser
+
 FROM base AS build
-COPY . /usr/src/app
 WORKDIR /usr/src/app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/libs/package.json ./packages/libs/package.json
+COPY packages/scrape/package.json ./packages/scrape/package.json
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
+COPY . .
 RUN pnpm build --filter=@anycrawl/scrape --filter=@anycrawl/libs
+RUN rm -rf node_modules
 
 FROM base AS scrape-playwright
-COPY --from=build --chown=myuser:myuser /usr/src/app /usr/src/app
-WORKDIR /usr/src/app
-
-# Set environment variables in the final stage
-ENV ANYCRAWL_AVAILABLE_ENGINES=playwright
 WORKDIR /usr/src/app/packages/scrape
-# Switch to non-root user
-USER myuser
 
+# 1. copy packages and root
+COPY --from=build --chown=myuser:myuser /usr/src/app/pnpm-lock.yaml /usr/src/app/pnpm-lock.yaml
+COPY --from=build --chown=myuser:myuser /usr/src/app/pnpm-workspace.yaml /usr/src/app/pnpm-workspace.yaml
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/eslint-config/package.json /usr/src/app/packages/eslint-config/package.json
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/search/package.json /usr/src/app/packages/search/package.json
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/typescript-config/package.json /usr/src/app/packages/typescript-config/package.json
+
+# 2. copy which packages are needed to be built
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/scrape/dist /usr/src/app/packages/scrape/dist
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/libs/dist /usr/src/app/packages/libs/dist
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/scrape/package.json /usr/src/app/packages/scrape/package.json
+COPY --from=build --chown=myuser:myuser /usr/src/app/packages/libs/package.json /usr/src/app/packages/libs/package.json
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
+ENV ANYCRAWL_AVAILABLE_ENGINES=playwright
+USER myuser
+RUN npx -y playwright install chromium
 CMD [ "node", "dist/Worker.js" ]
 

@@ -22,14 +22,14 @@ FROM base AS build
 WORKDIR /usr/src/app
 
 # Copy package files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
 
 # Install dependencies and build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm run build
+RUN pnpm run build --filter=api
 
 FROM base AS api
 WORKDIR /usr/src/app

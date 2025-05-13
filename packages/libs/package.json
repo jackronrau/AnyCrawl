@@ -25,7 +25,7 @@
     "devDependencies": {
         "@anycrawl/typescript-config": "workspace:*",
         "@types/turndown": "^5.0.5",
-        "typescript": "latest"
+        "typescript": "5.8.2"
     },
     "dependencies": {
         "turndown": "^7.2.0",
