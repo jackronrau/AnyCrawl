@@ -1,5 +1,9 @@
 FROM apify/actor-node-puppeteer-chrome AS base
 
+LABEL org.opencontainers.image.source=https://github.com/any4ai/AnyCrawl
+LABEL org.opencontainers.image.description="AnyCrawl Scrape Puppeteer Worker"
+LABEL org.opencontainers.image.licenses=MIT
+
 USER root
 
 ENV PNPM_HOME="/pnpm"
