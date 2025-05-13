@@ -1,6 +1,5 @@
-#!/usr/bin/env sh
+#!/bin/sh
 set -e
-
 
 MIGRATE_DATABASE=false
 FIRST_TIME_MIGRATION="FIRST_TIME_MIGRATION_$NODE_ENV"
