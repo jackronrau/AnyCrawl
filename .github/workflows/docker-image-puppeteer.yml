@@ -37,6 +37,6 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
                   multiPlatform: true
-                  platform: linux/amd64,linux/arm64
+                  platform: linux/amd64
                   dockerfile: ./packages/scrape/Dockerfile.puppeteer
                   tags: latest,${{ env.GITHUB_TAG }}
