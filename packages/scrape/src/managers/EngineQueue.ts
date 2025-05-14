@@ -38,6 +38,8 @@ const defaultOptions: EngineOptions = {
             // TODO block media requests
         },
     ],
+    // keep alive for engines even if queue is empty. default is true
+    keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
 };
 log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
 const defaultLaunchContext: Partial<LaunchContext> = {
