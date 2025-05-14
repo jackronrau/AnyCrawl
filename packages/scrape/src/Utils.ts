@@ -75,7 +75,7 @@ export class Utils {
      * @returns The Redis connection
      */
     public getRedisConnection(): IORedis.Redis {
-        const redisConnection = new IORedis.default(process.env.REDIS_URL!, {
+        const redisConnection = new IORedis.default(process.env.ANYCRAWL_REDIS_URL!, {
             maxRetriesPerRequest: null,
         });
         return redisConnection;

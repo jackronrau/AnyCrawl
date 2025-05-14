@@ -15,6 +15,8 @@ RUN addgroup -S myuser && adduser -S -G myuser myuser \
 
 FROM base AS build
 WORKDIR /usr/src/app
+# mkdir storage
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages/libs/package.json ./packages/libs/package.json
 COPY packages/scrape/package.json ./packages/scrape/package.json
@@ -25,7 +27,7 @@ RUN rm -rf node_modules
 
 FROM base AS scrape-cheerio
 WORKDIR /usr/src/app/packages/scrape
-
+RUN mkdir -p /usr/src/app/storage && chown -R myuser:myuser /usr/src/app/storage
 # 1. copy packages and root
 COPY --from=build --chown=myuser:myuser /usr/src/app/pnpm-lock.yaml /usr/src/app/pnpm-lock.yaml
 COPY --from=build --chown=myuser:myuser /usr/src/app/pnpm-workspace.yaml /usr/src/app/pnpm-workspace.yaml

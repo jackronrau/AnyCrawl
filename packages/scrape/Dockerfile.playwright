@@ -40,6 +40,8 @@ COPY --from=build --chown=myuser:myuser /usr/src/app/packages/libs/dist /usr/src
 COPY --from=build --chown=myuser:myuser /usr/src/app/packages/scrape/package.json /usr/src/app/packages/scrape/package.json
 COPY --from=build --chown=myuser:myuser /usr/src/app/packages/libs/package.json /usr/src/app/packages/libs/package.json
 
+# storage
+RUN mkdir -p /usr/src/app/storage && chown -R myuser:myuser /usr/src/app/storage
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 ENV ANYCRAWL_AVAILABLE_ENGINES=playwright
 USER myuser
