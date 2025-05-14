@@ -1,4 +1,4 @@
-name: API Docker Image CI
+name: Scrape-Puppeteer Docker Image CI
 
 on:
     push:
@@ -29,14 +29,14 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and push API image
+            - name: Build and push Scrape Puppeteer image
               uses: mr-smithers-excellent/docker-build-push@v6
               with:
-                  image: anycrawl-api
+                  image: anycrawl-scrape-puppeteer
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
                   multiPlatform: true
-                  platform: linux/amd64,linux/arm64
-                  dockerfile: ./apps/api/Dockerfile
+                  platform: linux/amd64
+                  dockerfile: ./packages/scrape/Dockerfile.puppeteer
                   tags: latest,${{ env.GITHUB_TAG }}

@@ -7,7 +7,7 @@ if [[ ! -e /usr/src/app/db/$FIRST_TIME_MIGRATION ]] || [[ $MIGRATE_DATABASE = tr
     # Place your script that you only want to run on first startup.
     echo "Initialize database first time only"
     touch /usr/src/app/db/$FIRST_TIME_MIGRATION
-    pnpm db:migrate & PID=$!
+    pnpm drizzle-kit migrate & PID=$!
     # Wait for migration to finish
     wait $PID
 fi
