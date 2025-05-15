@@ -10,7 +10,7 @@ jobs:
     build:
         runs-on: ubuntu-latest
         env:
-            GITHUB_TAG: v0.0.1-alpha.1
+            GITHUB_TAG: v0.0.1-alpha.2
         permissions:
             contents: read
             packages: write

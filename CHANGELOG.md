@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-alpha.2] - 2025-05-15
+
+### Added
+
+- Added proxy support to scraping configuration
+- Added ANYCRAWL_KEEPALIVE option for engine keep-alive functionality
+
+### Changed
+
+- Updated Dockerfiles for Cheerio, Playwright, and Puppeteer services
+- Improved Docker environment variables configuration
+- Modified Docker permissions and directory ownership settings
+- Updated .env.example and docker-compose.yml to use ANYCRAWL_REDIS_URL
+
+### Fixed
+
+- Fixed Docker permissions issues for scraping services
+- Fixed database migration issues
+
 ## [0.0.1-alpha.1] - 2025-05-13
 
 ### Added
