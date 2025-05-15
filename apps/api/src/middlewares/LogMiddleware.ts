@@ -4,6 +4,11 @@ import { getDB } from "../db/index.js";
 import { log } from "@anycrawl/libs/log";
 
 export const logMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    // Skip logging for health check endpoint
+    if (req.path === '/health') {
+        return next();
+    }
+
     const startTime = process.hrtime();
     const originalSend = res.send;
 
