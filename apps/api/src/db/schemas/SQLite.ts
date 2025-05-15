@@ -55,6 +55,10 @@ export const requestLog = p.sqliteTable("request_log", {
     requestPayload: p.text("request_payload"),
     // Request header
     requestHeader: p.text("request_header"),
+    // Response body
+    responseBody: p.text("response_body"),
+    // Response header
+    responseHeader: p.text("response_header"),
     // Success or not
     success: p.integer("success", { mode: "boolean" }).notNull().default(true),
     // create at

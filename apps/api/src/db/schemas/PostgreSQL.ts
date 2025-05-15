@@ -52,9 +52,13 @@ export const requestLog = p.pgTable("request_log", {
     // User agent string
     userAgent: p.text("user_agent"),
     // Request body
-    requestPayload: p.text("request_payload"),
+    requestPayload: p.jsonb("request_payload"),
     // Request header
-    requestHeader: p.text("request_header"),
+    requestHeader: p.jsonb("request_header"),
+    // Response body
+    responseBody: p.jsonb("response_body"),
+    // Response header
+    responseHeader: p.jsonb("response_header"),
     // Success or not
     success: p.boolean("success").notNull().default(true),
     // create at

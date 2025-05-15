@@ -29,9 +29,8 @@ export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 export type EngineType = (typeof AVAILABLE_ENGINES)[number];
 
 const defaultOptions: EngineOptions = {
-    maxConcurrency: process.env.MAX_CONCURRENCY ? parseInt(process.env.MAX_CONCURRENCY) : 50,
-    minConcurrency: process.env.MIN_CONCURRENCY ? parseInt(process.env.MIN_CONCURRENCY) : 50,
     maxRequestRetries: 1,
+    maxSessionRotations: 3,
     requestHandlerTimeoutSecs: 60,
     preNavigationHooks: [
         async ({ request, page }) => {
@@ -45,6 +44,12 @@ const defaultOptions: EngineOptions = {
     proxyConfiguration: proxyConfiguration,
 
 };
+if (process.env.ANYCRAWL_MIN_CONCURRENCY) {
+    defaultOptions.minConcurrency = process.env.ANYCRAWL_MIN_CONCURRENCY ? parseInt(process.env.ANYCRAWL_MIN_CONCURRENCY) : 50;
+}
+if (process.env.ANYCRAWL_MAX_CONCURRENCY) {
+    defaultOptions.maxConcurrency = process.env.ANYCRAWL_MAX_CONCURRENCY ? parseInt(process.env.ANYCRAWL_MAX_CONCURRENCY) : 50;
+}
 log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
 log.info(`enable proxy: ${process.env.ANYCRAWL_PROXY_URL ? true : false}, ${process.env.ANYCRAWL_PROXY_URL}`);
 const defaultLaunchContext: Partial<LaunchContext> = {

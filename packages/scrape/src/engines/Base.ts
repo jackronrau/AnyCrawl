@@ -41,6 +41,7 @@ export interface EngineOptions {
     additionalMimeTypes?: string[];
     keepAlive?: boolean;
     proxyConfiguration?: ProxyConfiguration;
+    maxSessionRotations?: number;
 }
 
 /**

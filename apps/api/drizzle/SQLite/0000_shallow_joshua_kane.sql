@@ -25,6 +25,8 @@ CREATE TABLE `request_log` (
 	`user_agent` text,
 	`request_payload` text,
 	`request_header` text,
+	`response_body` text,
+	`response_header` text,
 	`success` integer DEFAULT true NOT NULL,
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`api_key_id`) REFERENCES `api_key`(`uuid`) ON UPDATE no action ON DELETE no action

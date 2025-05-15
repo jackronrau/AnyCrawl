@@ -23,8 +23,10 @@ CREATE TABLE "request_log" (
 	"credits_used" integer DEFAULT 0 NOT NULL,
 	"ip_address" text,
 	"user_agent" text,
-	"request_payload" text,
-	"request_header" text,
+	"request_payload" jsonb,
+	"request_header" jsonb,
+	"response_body" jsonb,
+	"response_header" jsonb,
 	"success" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp NOT NULL
 );
