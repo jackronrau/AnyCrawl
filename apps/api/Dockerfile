@@ -15,13 +15,6 @@ RUN apk add --no-cache \
     procps \
     && corepack enable
 
-# Add non-root user
-RUN addgroup -S myuser && adduser -S myuser -G myuser \
-    && mkdir -p /usr/src/app/storage \
-    && chown -R myuser:myuser /usr/src/app \
-    && mkdir -p /usr/src/app/db \
-    && chown -R myuser:myuser /usr/src/app/db
-
 FROM base AS build
 WORKDIR /usr/src/app
 
@@ -52,8 +45,6 @@ EXPOSE 8080
 
 # Make entrypoint script executable before switching user
 RUN chmod +x docker-entrypoint.sh
-
-USER myuser
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
