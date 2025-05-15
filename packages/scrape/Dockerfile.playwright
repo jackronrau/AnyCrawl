@@ -9,7 +9,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
 RUN corepack enable pnpm
 
-RUN npx playwright chromium --with-deps
+RUN npx playwright install-deps
 
 FROM base AS build
 WORKDIR /usr/src/app
@@ -39,6 +39,8 @@ COPY --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 ENV ANYCRAWL_AVAILABLE_ENGINES=playwright
+
+RUN npx -y playwright install chromium
 
 CMD [ "node", "dist/Worker.js" ]
 

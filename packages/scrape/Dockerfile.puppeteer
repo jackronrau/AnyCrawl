@@ -22,6 +22,8 @@ RUN pnpm build --filter=@anycrawl/scrape --filter=@anycrawl/libs
 RUN rm -rf node_modules
 
 FROM base AS scrape-puppeteer
+
+
 WORKDIR /usr/src/app/packages/scrape
 
 # 1. copy packages and root
@@ -39,6 +41,8 @@ COPY --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 ENV ANYCRAWL_AVAILABLE_ENGINES=puppeteer
+
+RUN ln -s /home/myuser/.cache/puppeteer /root/.cache/puppeteer
 
 CMD [ "node", "dist/Worker.js" ]
 
