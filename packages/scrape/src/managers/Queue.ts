@@ -10,6 +10,7 @@ interface requestTask {
     queueName?: QueueName;
     options?: {
         headless?: boolean;
+        proxy?: string;
     };
 }
 

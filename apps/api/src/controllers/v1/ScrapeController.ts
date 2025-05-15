@@ -13,6 +13,7 @@ export class ScrapeController {
                 url: validatedData.url,
                 engine: validatedData.engine,
                 options: {
+                    proxy: validatedData.proxy,
                     // TODO support more options
                 },
             });

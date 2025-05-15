@@ -1,4 +1,4 @@
-import { Configuration, KeyValueStore, log } from "crawlee";
+import { Configuration, KeyValueStore, log, ProxyConfiguration } from "crawlee";
 import { join } from "path";
 import {
     RequestQueue,
@@ -40,6 +40,7 @@ export interface EngineOptions {
     preNavigationHooks?: ((context: CrawlingContext) => Promise<any>)[];
     additionalMimeTypes?: string[];
     keepAlive?: boolean;
+    proxyConfiguration?: ProxyConfiguration;
 }
 
 /**

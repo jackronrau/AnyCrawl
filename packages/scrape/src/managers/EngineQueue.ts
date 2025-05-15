@@ -5,6 +5,7 @@ import { Utils } from "../Utils.js";
 import { PlaywrightEngine } from "../engines/Playwright.js";
 import { PuppeteerEngine } from "../engines/Puppeteer.js";
 import { EngineOptions } from "../engines/Base.js";
+import proxyConfiguration from "./Proxy.js";
 
 // Define available engine types
 export const ALLOWED_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
@@ -40,8 +41,12 @@ const defaultOptions: EngineOptions = {
     ],
     // keep alive for engines even if queue is empty. default is true
     keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
+    // proxy configuration
+    proxyConfiguration: proxyConfiguration,
+
 };
 log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
+log.info(`enable proxy: ${process.env.ANYCRAWL_PROXY_URL ? true : false}, ${process.env.ANYCRAWL_PROXY_URL}`);
 const defaultLaunchContext: Partial<LaunchContext> = {
     launchOptions: {
         args: [
@@ -241,7 +246,7 @@ export class EngineQueueManager {
         await queue.addRequest({
             url,
             uniqueKey,
-            userData,
+            userData, //userData.options will be used as options for the engine
         });
         log.info(`Added URL to queue: ${url} for engine: ${engineType}`);
         return uniqueKey;

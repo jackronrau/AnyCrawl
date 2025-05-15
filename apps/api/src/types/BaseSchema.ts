@@ -11,6 +11,11 @@ export const baseSchema = z.object({
      * The engine to be used
      */
     engine: z.enum(AVAILABLE_ENGINES).default("cheerio"),
+
+    /**
+     * The proxy to be used
+     */
+    proxy: z.string().url().optional(),
 });
 
 export type BaseSchema = z.infer<typeof baseSchema>;

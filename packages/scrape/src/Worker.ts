@@ -26,12 +26,14 @@ async function runJob(job: Job) {
         throw new Error(`Unsupported engine type: ${engineType}`);
     }
     log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
-    const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url, {
-        jobId: job.id,
-        queueName: job.data.queueName,
-        type: job.data.type,
-        options: job.data.options || {},
-    });
+    const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url,
+        {
+            jobId: job.id,
+            queueName: job.data.queueName,
+            type: job.data.type,
+            options: job.data.options || {},//from user input which be inserted into job.data as options
+        }//userData
+    );
     job.updateData({
         ...job.data,
         uniqueKey,
