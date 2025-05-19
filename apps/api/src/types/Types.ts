@@ -14,4 +14,6 @@ export interface RequestWithAuth extends Request {
         lastUsedAt?: Date;
         expiresAt?: Date;
     };
+    creditsUsed?: number;
+    checkCredits?: boolean;
 }

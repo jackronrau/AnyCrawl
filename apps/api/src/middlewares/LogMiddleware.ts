@@ -1,20 +1,18 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { requestLog } from "../db/schemas/PostgreSQL.js";
 import { getDB } from "../db/index.js";
 import { log } from "@anycrawl/libs/log";
+import { captureResponseBody, CapturedResponse } from "../utils/responseCapture.js";
+import { RequestWithAuth } from "../types/Types.js";
 
-export const logMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+export const logMiddleware = async (req: RequestWithAuth, res: Response, next: NextFunction) => {
     // Skip logging for health check endpoint
     if (req.path === '/health') {
         return next();
     }
 
-    let responseBody: any;
-    const originalSend = res.send;
-    res.send = function (body?: any): Response {
-        responseBody = body;
-        return originalSend.call(this, body);
-    };
+    // Capture response body
+    const capturedRes = captureResponseBody(res);
 
     res.on("finish", () => {
         // Get API key from request header
@@ -33,10 +31,10 @@ export const logMiddleware = async (req: Request, res: Response, next: NextFunct
         // Check if responseBody is a valid JSON string
         let parsedResponseBody;
         try {
-            parsedResponseBody = JSON.parse(responseBody);
+            parsedResponseBody = JSON.parse(capturedRes.capturedBody);
         } catch (e) {
             // If parsing fails, use the original response body
-            parsedResponseBody = responseBody;
+            parsedResponseBody = capturedRes.capturedBody;
         }
         const logEntry = {
             apiKey: apiKeyId || null,
@@ -51,7 +49,7 @@ export const logMiddleware = async (req: Request, res: Response, next: NextFunct
             requestHeader: req.headers,
             responseBody: parsedResponseBody,
             responseHeader: filteredHeaders,
-            success: res.statusCode >= 200 && res.statusCode < 400 ? 1 : 0,
+            success: res.statusCode >= 200 && res.statusCode < 400,
             createdAt: new Date(),
         };
 

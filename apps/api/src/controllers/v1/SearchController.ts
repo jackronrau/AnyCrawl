@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { z } from "zod";
 import { SearchService } from "@anycrawl/search/SearchService";
 import { log } from "@anycrawl/libs/log";
 import { searchSchema } from "../../types/SearchSchema.js";
-
+import { RequestWithAuth } from "../../types/Types.js";
 export class SearchController {
     private searchService: SearchService;
 
@@ -25,7 +25,7 @@ export class SearchController {
         }
     }
 
-    public handle = async (req: Request, res: Response): Promise<void> => {
+    public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {
         try {
             // Validate request body against searchSchema
             const validatedData = searchSchema.parse(req.body);
@@ -39,7 +39,8 @@ export class SearchController {
                 lang: validatedData.lang,
                 // country: validatedData.country,
             });
-
+            // credits used is the number of pages.
+            req.creditsUsed = validatedData.pages;
             res.json({
                 success: true,
                 data: results,

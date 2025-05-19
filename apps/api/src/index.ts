@@ -7,6 +7,7 @@ import responseTime from "response-time";
 import { logMiddleware } from "./middlewares/LogMiddleware.js";
 import { authMiddleware } from "./middlewares/AuthMiddleware.js";
 import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware.js";
+import { deductCreditsMiddleware } from "./middlewares/DeductCreditsMiddleware.js";
 import { log, ConsoleStream } from "@anycrawl/libs/log";
 
 export const app = express();
@@ -39,6 +40,8 @@ app.get("/health", (_req: express.Request, res: express.Response) => {
 app.use(authMiddleware);
 // check credits
 app.use(checkCreditsMiddleware);
+// deduct credits after successful requests
+app.use(deductCreditsMiddleware);
 // load routers
 app.use("/v1", v1Router);
 

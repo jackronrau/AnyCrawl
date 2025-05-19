@@ -1,6 +1,4 @@
 import { Response, NextFunction } from "express";
-import { getDB, schemas } from "../db/index.js";
-import { eq } from "drizzle-orm";
 import { RequestWithAuth } from "../types/Types.js";
 import { log } from "@anycrawl/libs/log";
 
@@ -9,11 +7,12 @@ export const checkCreditsMiddleware = async (
     res: Response,
     next: NextFunction
 ): Promise<void> => {
-    // Skip credits check if auth is disabled
-    if (process.env.ANYCRAWL_API_AUTH_ENABLED !== "true") {
+    // Skip if auth is disabled or credits deduction is disabled.
+    if (process.env.ANYCRAWL_API_AUTH_ENABLED !== "true" || process.env.ANYCRAWL_API_CREDITS_ENABLED !== "true") {
         next();
         return;
     }
+    req.checkCredits = true;
 
     try {
         // Get current credits from auth user
