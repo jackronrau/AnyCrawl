@@ -1,6 +1,8 @@
 import { Response, NextFunction } from "express";
 import { RequestWithAuth } from "../types/Types.js";
 import { log } from "@anycrawl/libs/log";
+import { getDB, schemas } from "../db/index.js";
+import { eq } from "drizzle-orm";
 
 export const checkCreditsMiddleware = async (
     req: RequestWithAuth,
@@ -15,14 +17,41 @@ export const checkCreditsMiddleware = async (
     req.checkCredits = true;
 
     try {
-        // Get current credits from auth user
-        const credits = req.auth?.credits || 0;
+        const userUuid = req.auth?.uuid;
+        if (!req.auth) {
+            res.status(401).json({
+                success: false,
+                error: "Authentication required",
+            });
+            return;
+        }
 
-        // Check if user has any credits
-        if (credits <= 0) {
+        // Get current credits from database in real-time
+        const db = await getDB();
+        const [user] = await db
+            .select({ credits: schemas.apiKey.credits })
+            .from(schemas.apiKey)
+            .where(eq(schemas.apiKey.uuid, userUuid));
+
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                error: "User not found",
+            });
+            return;
+        }
+
+        // Update auth object with latest credits
+        if (req.auth) {
+            req.auth.credits = user.credits;
+        }
+
+        // Check if user has any credits (allowing negative credits now)
+        if (user.credits <= 0) {
             res.status(402).json({
                 success: false,
                 error: "Insufficient credits",
+                current_credits: user.credits,
             });
             return;
         }

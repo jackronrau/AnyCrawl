@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { getDB, schemas } from "../db/index.js";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, gte, sql } from "drizzle-orm";
 import { RequestWithAuth } from "../types/Types.js";
 import { log } from "@anycrawl/libs/log";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -39,32 +39,25 @@ export const deductCreditsMiddleware = async (
             try {
                 const db = await getDB();
 
-                // Use a transaction to ensure atomicity
-                await db.transaction(async (tx: NodePgDatabase) => {
-                    // Get the current credits with a lock
-                    const [user] = await tx
-                        .select({ credits: schemas.apiKey.credits })
-                        .from(schemas.apiKey)
-                        .where(eq(schemas.apiKey.uuid, userUuid))
-                        .for('update'); // This locks the row for update
+                // Update credits atomically in a single query, allowing negative credits
+                const [updatedUser] = await db
+                    .update(schemas.apiKey)
+                    .set({
+                        credits: sql`${schemas.apiKey.credits} - ${req.creditsUsed!}`
+                    })
+                    .where(eq(schemas.apiKey.uuid, userUuid))
+                    .returning({ credits: schemas.apiKey.credits });
 
-                    if (!user || user.credits <= 0) {
-                        throw new Error('Insufficient credits');
-                    }
+                if (!updatedUser) {
+                    throw new Error('User not found');
+                }
 
-                    // Update credits atomically
-                    await tx
-                        .update(schemas.apiKey)
-                        .set({ credits: user.credits - req.creditsUsed! })
-                        .where(
-                            and(
-                                eq(schemas.apiKey.uuid, userUuid),
-                                gt(schemas.apiKey.credits, 0)
-                            )
-                        );
+                // Update the auth object with the new credit balance
+                if (req.auth) {
+                    req.auth.credits = updatedUser.credits;
+                }
 
-                    log.info(`Deducted 1 credit from user ${userUuid}. Remaining credits: ${user.credits - 1}`);
-                });
+                log.info(`Deducted ${req.creditsUsed} credits from user ${userUuid}. Remaining credits: ${updatedUser.credits}`);
             } catch (error) {
                 log.error(`Failed to deduct credits for user ${userUuid}: ${error}`);
             }
