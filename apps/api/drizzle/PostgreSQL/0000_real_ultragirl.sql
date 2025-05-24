@@ -1,11 +1,10 @@
 CREATE TABLE "api_key" (
 	"uuid" uuid PRIMARY KEY NOT NULL,
+	"user" uuid,
 	"key" text NOT NULL,
 	"name" text DEFAULT 'default',
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_by" integer DEFAULT -1,
-	"hashed_key" text NOT NULL,
-	"salt" text NOT NULL,
 	"credits" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp NOT NULL,
 	"last_used_at" timestamp,

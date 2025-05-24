@@ -1,5 +1,5 @@
 {
-  "id": "de91c165-4eae-4137-9b9a-9e12266d4a56",
+  "id": "50043720-8182-45c5-aa32-6f53776316d8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -13,6 +13,12 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true
+        },
+        "user": {
+          "name": "user",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "key": {
           "name": "key",
@@ -40,18 +46,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": -1
-        },
-        "hashed_key": {
-          "name": "hashed_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "salt": {
-          "name": "salt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
         },
         "credits": {
           "name": "credits",

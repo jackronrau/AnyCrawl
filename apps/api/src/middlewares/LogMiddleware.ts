@@ -1,6 +1,5 @@
 import { Response, NextFunction } from "express";
-import { requestLog } from "../db/schemas/PostgreSQL.js";
-import { getDB } from "../db/index.js";
+import { getDB, schemas } from "../db/index.js";
 import { log } from "@anycrawl/libs/log";
 import { captureResponseBody, CapturedResponse } from "../utils/responseCapture.js";
 import { RequestWithAuth } from "../types/Types.js";
@@ -15,8 +14,6 @@ export const logMiddleware = async (req: RequestWithAuth, res: Response, next: N
     const capturedRes = captureResponseBody(res);
 
     res.on("finish", () => {
-        // Get API key from request header
-        const apiKeyId = req.headers["x-api-key"] as string;
         // Create complete request payload
         const requestPayload = {
             body: req.body,
@@ -37,8 +34,8 @@ export const logMiddleware = async (req: RequestWithAuth, res: Response, next: N
             parsedResponseBody = capturedRes.capturedBody;
         }
         const logEntry = {
-            apiKey: apiKeyId || null,
-            path: req.path,
+            apiKey: req.auth?.uuid || null,
+            path: req.originalUrl,
             method: req.method,
             statusCode: res.statusCode,
             processingTimeMs: res.getHeader("x-response-time") ? String(res.getHeader("x-response-time")).replace("ms", "") : null,
@@ -55,7 +52,7 @@ export const logMiddleware = async (req: RequestWithAuth, res: Response, next: N
 
         // Insert log entry asynchronously
         getDB()
-            .then((db) => db.insert(requestLog).values(logEntry))
+            .then((db) => db.insert(schemas.requestLog).values(logEntry))
             .catch((error: Error) => {
                 log.error(`Failed to log request: ${error}, ${JSON.stringify(logEntry)}`);
             });

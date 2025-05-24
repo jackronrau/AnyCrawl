@@ -39,11 +39,12 @@ export const deductCreditsMiddleware = async (
             try {
                 const db = await getDB();
 
-                // Update credits atomically in a single query, allowing negative credits
+                // Update credits and last_used_at atomically in a single query, allowing negative credits
                 const [updatedUser] = await db
                     .update(schemas.apiKey)
                     .set({
-                        credits: sql`${schemas.apiKey.credits} - ${req.creditsUsed!}`
+                        credits: sql`${schemas.apiKey.credits} - ${req.creditsUsed!}`,
+                        lastUsedAt: new Date()
                     })
                     .where(eq(schemas.apiKey.uuid, userUuid))
                     .returning({ credits: schemas.apiKey.credits });

@@ -50,6 +50,8 @@ Thumbs.db
 
 # Project specific
 storage/
+/db
+!/apps/api/src/db
 *.db
 *.sqlite
 *.sqlite3
@@ -60,4 +62,3 @@ logs
 
 *.test
 
-db/

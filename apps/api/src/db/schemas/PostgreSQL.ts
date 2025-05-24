@@ -7,6 +7,8 @@ export const apiKey = p.pgTable("api_key", {
         .uuid()
         .primaryKey()
         .$defaultFn(() => randomUUID()),
+    // user uuid
+    user: p.uuid("user"),
     // API key value - must be unique
     key: p.text("key").notNull().unique(),
     // Display name for the API key
@@ -15,10 +17,6 @@ export const apiKey = p.pgTable("api_key", {
     isActive: p.boolean("is_active").notNull().default(true),
     // User/system that created this key
     createdBy: p.integer("created_by").default(-1),
-    // Hashed version of the key for security
-    hashedKey: p.text("hashed_key").notNull(),
-    // Salt used in key hashing
-    salt: p.text("salt").notNull(),
     // Available credit balance
     credits: p.integer("credits").notNull().default(0),
     // Timestamp when the key was created
