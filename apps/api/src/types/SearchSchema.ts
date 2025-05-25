@@ -7,7 +7,7 @@ const searchSchema = z.object({
     query: z.string(),
     limit: z.number().optional(),
     offset: z.number().optional(),
-    pages: z.number().optional(),
+    pages: z.number().min(1).max(20).optional(),
     lang: z.custom<SearchLocale>().optional(),
     country: z.custom<SearchLocale>().optional(),
 });
