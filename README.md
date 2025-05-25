@@ -16,6 +16,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![LLM Ready](https://img.shields.io/badge/LLM-Ready-blueviolet)](https://github.com/any4ai/anycrawl)
+[![Documentation](https://img.shields.io/badge/📖-Documentation-blue)](https://docs.anycrawl.dev)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
@@ -38,6 +39,8 @@ AnyCrawl is a high-performance web crawling and scraping application that excels
 Built with modern architectures and optimized for LLMs (Large Language Models), AnyCrawl provides:
 
 ## 🚀 Quick Start
+
+📖 **For detailed documentation, visit [Docs](https://docs.anycrawl.dev)**
 
 ### Docker Deployment
 
