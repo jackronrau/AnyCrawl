@@ -5,6 +5,8 @@ import type { MDXComponents } from "mdx/types";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import * as icons from "lucide-react";
 import { OpenAPIIcon, GithubIcon, OpenAIIcon } from "@/components/icons";
+import { APIPage } from "fumadocs-openapi/ui";
+import { openapi } from "@/lib/source";
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
     return {
@@ -17,6 +19,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
         Tab,
         Accordion,
         Accordions,
+        APIPage: (props) => <APIPage {...openapi.getAPIPageProps(props)} />,
         ...components,
         OpenAPIIcon,
         GithubIcon,

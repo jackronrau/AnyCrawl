@@ -1,0 +1,301 @@
+---
+title: Scrape
+description: Scrape a URL, and turn it to LLM-ready structured data.
+icon: Crosshair
+---
+
+## Introduction
+
+AnyCrawl scrape API converts any webpage into structured data optimized for Large Language Models (LLM). It supports multiple scraping engines including Cheerio, Playwright, Puppeteer, and outputs in various formats such as HTML, Markdown, JSON, etc.
+
+**Key Features**: The API **returns data immediately and synchronously** - no polling or webhooks required. It also **natively supports high concurrency** for large-scale scraping operations.
+
+## Core Features
+
+- **Multi-Engine Support**: Supports `cheerio` (static HTML parsing, fastest), `playwright` (cross-browser JavaScript rendering), `puppeteer` (Chrome-optimized JavaScript rendering)
+- **LLM Optimized**: Automatically extracts and formats content, generates Markdown format for easy LLM processing
+- **Proxy Support**: Supports HTTP/HTTPS proxy configuration
+- **Robust Error Handling**: Comprehensive error handling and retry mechanisms
+- **High Performance**: **Native high concurrency support** with asynchronous queue processing
+- **Immediate Response**: **Synchronous API** - get results instantly without polling
+
+## API Endpoint
+
+```
+POST https://api.anycrawl.dev/v1/scrape
+```
+
+## Request Parameters
+
+| Parameter | Type         | Required | Default   | Description                                                               |
+| --------- | ------------ | -------- | --------- | ------------------------------------------------------------------------- |
+| `url`     | string       | Yes      | -         | URL to scrape, must be a valid HTTP/HTTPS address                         |
+| `engine`  | enum         | No       | `cheerio` | Scraping engine type, options: `cheerio`, `playwright`, `puppeteer`       |
+| `proxy`   | string (URI) | No       | -         | Proxy server address, format: `http://proxy:port` or `https://proxy:port` |
+
+### Engine Types
+
+**Important Note**: Both `playwright` and `puppeteer` can use Chromium (Chrome's open-source version), but they serve different purposes and have different capabilities.
+
+#### `cheerio` (Default)
+
+- **Use Case**: Static HTML content scraping
+- **Advantages**: Fastest scraping speed, lowest resource consumption
+- **Limitations**: Cannot execute JavaScript, cannot handle dynamic content
+- **Recommended For**: News articles, blogs, static websites
+
+#### `playwright`
+
+- **Use Case**: Modern websites requiring JavaScript rendering, cross-browser testing
+- **Advantages**: Robust auto-wait features, better stability
+- **Limitations**: Higher resource consumption
+- **Recommended For**: Complex web applications
+
+#### `puppeteer`
+
+- **Advantages**: Deep Chrome DevTools integration, excellent performance metrics, faster execution
+- **Limitations**: **Does not support ARM CPU architecture**
+
+## Response Format
+
+### Success Response (HTTP 200)
+
+#### Successful Scraping
+
+```json
+{
+    "success": true,
+    "data": {
+        "url": "https://example.com",
+        "status": "completed",
+        "job_id": "7a2e165d-8f81-4be6-9ef7-23222330a396",
+        "title": "Page Title",
+        "html": "<html>Page HTML content</html>",
+        "markdown": "# Page Title\n\nPage content in Markdown",
+        "metadata": [],
+        "timestamp": "2025-05-25T07:56:44.162Z"
+    }
+}
+```
+
+#### Failed Scraping
+
+```json
+{
+    "success": true,
+    "data": {
+        "url": "https://example.com/404",
+        "status": "failed",
+        "error": "Request blocked - received 403 status code."
+    }
+}
+```
+
+### Error Responses
+
+#### 400 - Validation Error
+
+```json
+{
+    "success": false,
+    "error": "Validation error",
+    "details": {
+        "issues": [
+            {
+                "field": "engine",
+                "message": "Invalid enum value. Expected 'playwright' | 'cheerio' | 'puppeteer', received 'invalid'",
+                "code": "invalid_enum_value"
+            }
+        ],
+        "messages": [
+            "Invalid enum value. Expected 'playwright' | 'cheerio' | 'puppeteer', received 'invalid'"
+        ]
+    }
+}
+```
+
+#### 401 - Authentication Error
+
+```json
+{
+    "success": false,
+    "error": "Invalid API key"
+}
+```
+
+## Usage Examples
+
+### cURL
+
+#### Basic Scraping (using default cheerio engine)
+
+```shell
+curl -X POST "https://api.anycrawl.dev/v1/scrape" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com"
+  }'
+```
+
+#### Scraping Dynamic Content with Playwright Engine
+
+```shell
+curl -X POST "https://api.anycrawl.dev/v1/scrape" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://spa-example.com",
+    "engine": "playwright"
+  }'
+```
+
+#### Scraping with Proxy
+
+```shell
+curl -X POST "https://api.anycrawl.dev/v1/scrape" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "engine": "playwright",
+    "proxy": "http://proxy.example.com:8080"
+  }'
+```
+
+### JavaScript/TypeScript
+
+```typescript
+const response = await fetch("https://api.anycrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: {
+        Authorization: "Bearer YOUR_API_KEY",
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+        url: "https://example.com",
+        engine: "playwright",
+    }),
+});
+
+const result = await response.json();
+console.log(result.data.markdown); // Get Markdown formatted content
+```
+
+### Python
+
+```python
+import requests
+
+response = requests.post(
+    'https://api.anycrawl.dev/v1/scrape',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'url': 'https://example.com',
+        'engine': 'cheerio'
+    }
+)
+
+result = response.json()
+print(result['data']['markdown'])  # Output Markdown content
+```
+
+## Best Practices
+
+### Engine Selection Guidelines
+
+1. **Static Content Websites** (news, blogs, documentation) → Use `cheerio`
+2. **Complex Web Applications** (SPAs requiring JavaScript rendering) → Use `playwright` or `puppeteer`
+
+### Performance Optimization
+
+- For bulk static content scraping, prioritize `cheerio` engine
+- Only use `playwright` or `puppeteer` when JavaScript rendering is required
+- For best results, use rotating proxies to avoid IP blocks and rate limits, and ensure proxy servers are stable and reliable
+- **Leverage native high concurrency** - the API handles multiple concurrent requests efficiently
+
+### Error Handling
+
+```javascript
+try {
+    const response = await fetch("/v1/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://example.com" }),
+    });
+
+    const result = await response.json();
+
+    if (result.success && result.data.status === "completed") {
+        // Handle successful result
+        console.log(result.data.markdown);
+    } else {
+        // Handle scraping failure
+        console.error("Scraping failed:", result.data.error);
+    }
+} catch (error) {
+    // Handle network error
+    console.error("Request failed:", error);
+}
+```
+
+## High Concurrency Usage
+
+The API **natively supports high concurrency**. You can make multiple simultaneous requests without rate limiting concerns:
+
+```javascript
+// Concurrent scraping example
+const urls = ["https://example1.com", "https://example2.com", "https://example3.com"];
+
+const scrapePromises = urls.map((url) =>
+    fetch("/v1/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, engine: "cheerio" }),
+    }).then((res) => res.json())
+);
+
+// All requests execute concurrently and return immediately
+const results = await Promise.all(scrapePromises);
+```
+
+## Frequently Asked Questions
+
+### Q: When should I use different engines?
+
+A: Each engine has specific advantages:
+
+- **Cheerio**: For static HTML content, fastest performance, no JavaScript execution
+- **Playwright**: For complex web apps, better stability and auto-wait features, and it will support more browser types in the future
+- **Puppeteer**: Chrome/Chromium only, does not work on ARM CPUs and we do not provide related docker images
+
+### Q: Why do some websites fail to scrape?
+
+A: Possible reasons include:
+
+- Website blocks crawlers (returns 403/404)
+- JavaScript rendering required but using cheerio engine
+- Website requires authentication or special headers
+- Network connectivity issues
+
+### Q: How to handle websites requiring login?
+
+A: Currently the API doesn't support authentication. Recommendations:
+
+- Scrape publicly accessible pages
+- Use alternative methods to obtain authenticated content
+
+### Q: What are the proxy configuration requirements?
+
+A:
+
+- Supports HTTP/HTTPS proxies
+- Format: `http://host:port` or `https://host:port`
+- Ensure proxy servers are stable and available
+
+### Q: Is there rate limiting for concurrent requests?
+
+A: No, the API **natively supports high concurrency**. You can make multiple simultaneous requests without worrying about rate limits, and all requests return data immediately.

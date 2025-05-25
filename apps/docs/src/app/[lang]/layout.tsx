@@ -39,11 +39,11 @@ export default async function Layout({
                             },
                             {
                                 name: "繁體中文",
-                                locale: "zh-hk",
+                                locale: "zh-tw",
                             },
                         ],
                         translations: {
-                            "zh-hk": {
+                            "zh-tw": {
                                 toc: "目錄",
                                 search: "搜尋文檔",
                                 lastUpdate: "最後更新於",

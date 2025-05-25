@@ -18,7 +18,6 @@ export default async function Layout({
                 tabs: {
                     transform: (option, node) => ({
                         ...option,
-                        icon: "my icon",
                     }),
                 },
             }}

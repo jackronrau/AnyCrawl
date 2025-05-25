@@ -1,0 +1,15 @@
+{
+    "title": "General",
+    "description": "General docs",
+    "root": true,
+    "icon": "Building2",
+    "pages": [
+        "---Get Started---",
+        "index",
+        "docker",
+        "---Scrape---",
+        "scrape",
+        "---Search---",
+        "search"
+    ]
+}
