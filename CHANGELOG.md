@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-alpha.3] - 2025-05-25
+
+### Added
+
+- Added comprehensive OpenAPI documentation generation with automated API endpoint documentation
+- Added credits system with real-time credit tracking and management
+- Added `DeductCreditsMiddleware` for automatic credit deduction on successful API requests
+- Added new database fields for user tracking and enhanced request logging, and dropped some columns.
+- Added Docker deployment guide and documentation
+
+### Changed
+
+- Enhanced error handling in `ScrapeController` to return structured error messages array
+- Updated `SearchSchema` to enforce minimum (1) and maximum (20) values for pages parameter
+- Refactored `CheckCreditsMiddleware` to fetch user credits from database in real-time
+- Updated PostgreSQL and SQLite schemas for `api_key` and `request_log` tables with new user field
+- Enhanced logging middleware to capture additional request details including response body
+- Updated README with usage instructions and documentation links
+- Improved credit deduction logic to allow negative credits and atomic updates
+- Enhanced API endpoints with structured responses and better validation
+- Imporved request logging middleware to capture detailed request/response information
+
+### Fixed
+
+- Fixed database schema consistency between PostgreSQL and SQLite
+- Improved error handling and logging across API controllers
+
 ## [0.0.1-alpha.2] - 2025-05-15
 
 ### Added
