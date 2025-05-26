@@ -122,6 +122,10 @@ export class PuppeteerEngine extends BaseEngine {
             requestHandler,
             failedRequestHandler,
             headless: process.env.ANYCRAWL_HEADLESS === "false" ? false : true,
+            browserPoolOptions: {
+                retireInactiveBrowserAfterSecs: 3600,
+                closeInactiveBrowserAfterSecs: 3600,
+            }
         };
         crawlerOptions.autoscaledPoolOptions = {
             isFinishedFunction: async () => {

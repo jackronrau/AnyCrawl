@@ -29,8 +29,6 @@ export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
 export type EngineType = (typeof AVAILABLE_ENGINES)[number];
 
 const defaultOptions: EngineOptions = {
-    maxRequestRetries: 1,
-    maxSessionRotations: 3,
     requestHandlerTimeoutSecs: 60,
     preNavigationHooks: [
         async ({ request, page }) => {
@@ -42,7 +40,8 @@ const defaultOptions: EngineOptions = {
     keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
     // proxy configuration
     proxyConfiguration: proxyConfiguration,
-
+    useSessionPool: false,
+    persistCookiesPerSession: false
 };
 if (process.env.ANYCRAWL_MIN_CONCURRENCY) {
     defaultOptions.minConcurrency = process.env.ANYCRAWL_MIN_CONCURRENCY ? parseInt(process.env.ANYCRAWL_MIN_CONCURRENCY) : 50;

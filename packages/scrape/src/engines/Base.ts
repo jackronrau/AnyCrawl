@@ -80,12 +80,8 @@ export abstract class BaseEngine {
         Utils.getInstance().setStorageDirectory();
 
         this.options = {
-            minConcurrency: 10,
-            maxConcurrency: 50,
             maxRequestRetries: 2,
-            requestHandlerTimeoutSecs: 60,
-            useSessionPool: false,
-            persistCookiesPerSession: false,
+            requestHandlerTimeoutSecs: 30,
             ...options,
         };
     }
