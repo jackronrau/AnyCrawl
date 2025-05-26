@@ -13,36 +13,44 @@ RUN corepack enable pnpm
 
 FROM base AS build
 WORKDIR /usr/src/app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY packages/libs/package.json ./packages/libs/package.json
-COPY packages/scrape/package.json ./packages/scrape/package.json
+RUN chown myuser:myuser /usr/src/app
+COPY --chown=myuser:myuser package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY --chown=myuser:myuser packages/libs/package.json ./packages/libs/package.json
+COPY --chown=myuser:myuser packages/scrape/package.json ./packages/scrape/package.json
+USER myuser
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
-COPY . .
+COPY --chown=myuser:myuser . .
 RUN pnpm build --filter=@anycrawl/scrape --filter=@anycrawl/libs
 RUN rm -rf node_modules
 
 FROM base AS scrape-puppeteer
 
-
 WORKDIR /usr/src/app/packages/scrape
+RUN chown -R myuser:myuser /usr/src/app
 
 # 1. copy packages and root
-COPY --from=build /usr/src/app/pnpm-lock.yaml /usr/src/app/pnpm-lock.yaml
-COPY --from=build /usr/src/app/pnpm-workspace.yaml /usr/src/app/pnpm-workspace.yaml
-COPY --from=build /usr/src/app/packages/eslint-config/package.json /usr/src/app/packages/eslint-config/package.json
-COPY --from=build /usr/src/app/packages/search/package.json /usr/src/app/packages/search/package.json
-COPY --from=build /usr/src/app/packages/typescript-config/package.json /usr/src/app/packages/typescript-config/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/pnpm-lock.yaml /usr/src/app/pnpm-lock.yaml
+COPY --chown=myuser:myuser --from=build /usr/src/app/pnpm-workspace.yaml /usr/src/app/pnpm-workspace.yaml
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/eslint-config/package.json /usr/src/app/packages/eslint-config/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/search/package.json /usr/src/app/packages/search/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/typescript-config/package.json /usr/src/app/packages/typescript-config/package.json
 
 # 2. copy which packages are needed to be built
-COPY --from=build /usr/src/app/packages/scrape/dist /usr/src/app/packages/scrape/dist
-COPY --from=build /usr/src/app/packages/libs/dist /usr/src/app/packages/libs/dist
-COPY --from=build /usr/src/app/packages/scrape/package.json /usr/src/app/packages/scrape/package.json
-COPY --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/libs/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/scrape/dist /usr/src/app/packages/scrape/dist
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/libs/dist /usr/src/app/packages/libs/dist
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/scrape/package.json /usr/src/app/packages/scrape/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/libs/package.json
 
+USER myuser
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
-ENV ANYCRAWL_AVAILABLE_ENGINES=puppeteer
 
-RUN ln -s /home/myuser/.cache/puppeteer /root/.cache/puppeteer
+# Ensure puppeteer browsers are properly installed
+RUN npx puppeteer browsers install chrome
+
+# Set puppeteer environment variables
+ENV PUPPETEER_CACHE_DIR=/home/myuser/.cache/puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
+ENV ANYCRAWL_AVAILABLE_ENGINES=puppeteer
 
 CMD [ "node", "dist/Worker.js" ]
 

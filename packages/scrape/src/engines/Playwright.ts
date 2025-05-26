@@ -42,9 +42,6 @@ export class PlaywrightEngine extends BaseEngine {
             const { request, page } = context;
             const jobId = request.userData["jobId"];
 
-            // Wait for page to load
-            await page.waitForLoadState("networkidle");
-
             // Get page content
             const title = await page.title();
             const html = await page.content();

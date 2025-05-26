@@ -42,6 +42,8 @@ export interface EngineOptions {
     keepAlive?: boolean;
     proxyConfiguration?: ProxyConfiguration;
     maxSessionRotations?: number;
+    useSessionPool?: boolean;
+    persistCookiesPerSession?: boolean;
 }
 
 /**
@@ -82,6 +84,8 @@ export abstract class BaseEngine {
             maxConcurrency: 50,
             maxRequestRetries: 2,
             requestHandlerTimeoutSecs: 60,
+            useSessionPool: false,
+            persistCookiesPerSession: false,
             ...options,
         };
     }
