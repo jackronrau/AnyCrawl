@@ -1,10 +1,11 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { z } from "zod";
 import { scrapeSchema } from "../../types/ScrapeSchema.js";
 import { QueueManager } from "@anycrawl/scrape/managers/Queue";
+import { RequestWithAuth } from "../../types/Types.js";
 
 export class ScrapeController {
-    public handle = async (req: Request, res: Response): Promise<void> => {
+    public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {
         try {
             // Validate request body against ScrapeSchema
             const validatedData = scrapeSchema.parse(req.body);
@@ -20,6 +21,10 @@ export class ScrapeController {
             // waiting job done
             const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
+
+            // Set credits used for this scrape request (1 credit per scrape)
+            req.creditsUsed = 1;
+
             res.json({
                 success: true,
                 data: jobData,

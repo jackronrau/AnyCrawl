@@ -11,6 +11,7 @@ import {
     RequestQueue,
     log,
 } from "crawlee";
+import { AD_DOMAINS } from "@anycrawl/libs";
 
 export class PlaywrightEngine extends BaseEngine {
     protected engine: PlaywrightCrawler | null = null;
@@ -133,6 +134,21 @@ export class PlaywrightEngine extends BaseEngine {
                 return false;
             },
         };
+
+        // block ad requests and media requests
+        crawlerOptions.preNavigationHooks = [
+            async (context: CrawlingContext) => {
+                const page = (context as PlaywrightCrawlingContext<Dictionary>).page;
+                await page.route('**/*', async (route: any) => {
+                    const url = route.request().url();
+                    if (AD_DOMAINS.some(domain => url.includes(domain))) {
+                        return route.abort();
+                    }
+                    return route.continue();
+                });
+            },
+        ];
+
         this.engine = new PlaywrightCrawler(crawlerOptions);
         this.isInitialized = true;
     }
