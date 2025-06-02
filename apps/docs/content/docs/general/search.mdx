@@ -28,14 +28,15 @@ POST https://api.anycrawl.dev/v1/search
 
 ## Request Parameters
 
-| Parameter | Type   | Required | Default  | Description                                                       |
-| --------- | ------ | -------- | -------- | ----------------------------------------------------------------- |
-| `query`   | string | Yes      | -        | Search query string to be executed                                |
-| `engine`  | enum   | No       | `google` | Search engine to use. Currently supported: `google`               |
-| `limit`   | number | No       | 10       | Maximum number of results per page                                |
-| `offset`  | number | No       | 0        | Number of results to skip (for pagination)                        |
-| `pages`   | number | No       | 1        | Number of search result pages to retrieve (min: 1, max: 20)       |
-| `lang`    | string | No       | `en`     | Language locale for search results (e.g., 'en', 'zh', 'es', 'fr') |
+| Parameter    | Type           | Required | Default  | Description                                                                                                                           |
+| ------------ | -------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `query`      | string         | Yes      | -        | Search query string to be executed                                                                                                    |
+| `engine`     | enum           | No       | `google` | Search engine to use. Currently supported: `google`                                                                                   |
+| `limit`      | number         | No       | 10       | Maximum number of results per page                                                                                                    |
+| `offset`     | number         | No       | 0        | Number of results to skip (for pagination)                                                                                            |
+| `pages`      | number         | No       | 1        | Number of search result pages to retrieve (min: 1, max: 20)                                                                           |
+| `lang`       | string         | No       | `en`     | Language locale for search results (e.g., 'en', 'zh', 'es', 'fr')                                                                     |
+| `safeSearch` | number \| null | No       | null     | Safe search filter level for Google: `0` (off), `1` (medium), `2` (high), or null (default). Only applicable to Google search engine. |
 
 ### Supported Search Engines
 
@@ -43,8 +44,9 @@ POST https://api.anycrawl.dev/v1/search
 
 - **Use Case**: General web search with comprehensive results
 - **Advantages**: Most comprehensive search results, supports multiple languages and regions
-- **Features**: Returns both search results and search suggestions
+- **Features**: Returns both search results and search suggestions. Supports safe search filtering (off/medium/high)
 - **Recommended For**: General web searches, research, content discovery
+- **Safe Search**: Supports `safeSearch` parameter with values 0 (off), 1 (medium), 2 (high), or null (default)
 
 ## Response Format
 
@@ -176,6 +178,18 @@ curl -X POST "https://api.anycrawl.dev/v1/search" \
   }'
 ```
 
+#### Search with Safe Search
+
+```shell
+curl -X POST "https://api.anycrawl.dev/v1/search" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "educational content",
+    "safeSearch": 0
+  }'
+```
+
 ### JavaScript/TypeScript
 
 #### Basic Search
@@ -206,6 +220,7 @@ interface SearchOptions {
     pages?: number;
     limit?: number;
     lang?: string;
+    safeSearch?: number | null; // 0: off, 1: medium, 2: high, null: default (Google only)
 }
 
 async function searchWithPagination(options: SearchOptions) {
@@ -221,6 +236,7 @@ async function searchWithPagination(options: SearchOptions) {
             pages: options.pages || 1,
             limit: options.limit || 10,
             lang: options.lang || "en",
+            safeSearch: options.safeSearch,
         }),
     });
 
@@ -464,6 +480,8 @@ A: No, the API **natively supports high concurrency**. You can make multiple sim
 The Search API supports multiple languages and regions through the `lang` parameter. Below are all supported locales:
 
 ### Major Languages
+
+- `all` - All languages
 
 #### **English** 🌐
 

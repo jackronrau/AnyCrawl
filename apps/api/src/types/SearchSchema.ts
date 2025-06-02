@@ -10,6 +10,7 @@ const searchSchema = z.object({
     pages: z.number().min(1).max(20).optional(),
     lang: z.custom<SearchLocale>().optional(),
     country: z.custom<SearchLocale>().optional(),
+    safeSearch: z.number().min(0).max(2).nullable().optional(), // 0: off, 1: medium, 2: high, null: default (Google only)
 });
 
 export type SearchSchema = z.infer<typeof searchSchema>;

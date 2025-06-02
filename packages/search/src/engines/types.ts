@@ -23,6 +23,7 @@ export interface SearchOptions {
     pages?: number;
     lang?: SearchLocale;
     country?: SearchLocale;
+    safeSearch?: number | null; // 0: off, 1: medium, 2: high, null: default (Google only)
     [key: string]: any;
 }
 

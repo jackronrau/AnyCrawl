@@ -30,12 +30,6 @@ export type EngineType = (typeof AVAILABLE_ENGINES)[number];
 
 const defaultOptions: EngineOptions = {
     requestHandlerTimeoutSecs: 60,
-    preNavigationHooks: [
-        async ({ request, page }) => {
-            // pre navigation hook, you can set extra headers, cookies, etc.
-            // TODO block media requests
-        },
-    ],
     // keep alive for engines even if queue is empty. default is true
     keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
     // proxy configuration

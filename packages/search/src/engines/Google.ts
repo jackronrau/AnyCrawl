@@ -130,7 +130,7 @@ export class GoogleSearchEngine implements SearchEngine {
         }
 
         // Add safe search if specified
-        if (options.safeSearch !== undefined) {
+        if (options.safeSearch !== undefined && options.safeSearch !== null) {
             params.append("safe", this.safeSearchMap[options.safeSearch] || "medium");
         }
 

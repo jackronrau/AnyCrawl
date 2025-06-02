@@ -50,7 +50,13 @@ const searchSchemaExtended = searchSchema.extend({
     country: searchSchema.shape.country?.openapi({
         description: 'Country locale for search results',
         example: 'US'
-    }) || z.string().optional()
+    }) || z.string().optional(),
+    safeSearch: searchSchema.shape.safeSearch?.openapi({
+        description: 'Safe search filter level for Google search engine. 0: off, 1: medium, 2: high, null: default. Only applicable to Google engine.',
+        example: 1,
+        enum: [0, 1, 2],
+        nullable: true
+    }) || z.number().nullable().optional()
 }).openapi({
     description: 'Request schema for web search'
 });
