@@ -1,0 +1,131 @@
+import { RequestQueueV2, LaunchContext, Dictionary, log } from "crawlee";
+import { CheerioEngine } from "./Cheerio.js";
+import { PlaywrightEngine } from "./Playwright.js";
+import { PuppeteerEngine } from "./Puppeteer.js";
+import { EngineOptions, CrawlingContext } from "./Base.js";
+import proxyConfiguration from "../managers/Proxy.js";
+
+export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
+
+// Base factory interface
+export interface IEngineFactory {
+    createEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<Engine>;
+}
+
+// Default configurations
+const defaultOptions: EngineOptions = {
+    requestHandlerTimeoutSecs: 60,
+    keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
+    proxyConfiguration: proxyConfiguration,
+    useSessionPool: false,
+    persistCookiesPerSession: false
+};
+
+if (process.env.ANYCRAWL_MIN_CONCURRENCY) {
+    defaultOptions.minConcurrency = parseInt(process.env.ANYCRAWL_MIN_CONCURRENCY);
+}
+if (process.env.ANYCRAWL_MAX_CONCURRENCY) {
+    defaultOptions.maxConcurrency = parseInt(process.env.ANYCRAWL_MAX_CONCURRENCY);
+}
+
+const defaultLaunchContext: Partial<LaunchContext> = {
+    launchOptions: {
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+            "--disable-gpu",
+            ...(process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true"
+                ? ["--ignore-certificate-errors", "--ignore-certificate-errors-spki-list"]
+                : []),
+        ],
+        ignoreHTTPSErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
+    },
+};
+
+const defaultHttpOptions: Record<string, any> = {
+    ignoreSslErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
+};
+
+// Concrete factory implementations
+export class CheerioEngineFactory implements IEngineFactory {
+    async createEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<CheerioEngine> {
+        return new CheerioEngine({
+            ...defaultOptions,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            additionalMimeTypes: ["text/html", "text/plain", "application/xhtml+xml"],
+            ...defaultHttpOptions,
+            ...options,
+        });
+    }
+}
+
+export class PlaywrightEngineFactory implements IEngineFactory {
+    async createEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PlaywrightEngine> {
+        return new PlaywrightEngine({
+            ...defaultOptions,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            launchContext: defaultLaunchContext,
+            ...options,
+        });
+    }
+}
+
+export class PuppeteerEngineFactory implements IEngineFactory {
+    async createEngine(queue: RequestQueueV2, options?: EngineOptions): Promise<PuppeteerEngine> {
+        return new PuppeteerEngine({
+            ...defaultOptions,
+            requestQueue: queue,
+            failedRequestHandler: async (context: CrawlingContext) => {
+                const { request, error } = context;
+                log.error(`Request ${request.url} failed with error: ${error}`);
+            },
+            launchContext: defaultLaunchContext,
+            ...options,
+        });
+    }
+}
+
+// Factory registry and main factory
+export class EngineFactoryRegistry {
+    private static factories = new Map<string, IEngineFactory>();
+
+    static {
+        // Register default factories
+        this.register('cheerio', new CheerioEngineFactory());
+        this.register('playwright', new PlaywrightEngineFactory());
+        this.register('puppeteer', new PuppeteerEngineFactory());
+    }
+
+    static register(engineType: string, factory: IEngineFactory): void {
+        this.factories.set(engineType, factory);
+    }
+
+    static async createEngine(
+        engineType: string,
+        queue: RequestQueueV2,
+        options?: EngineOptions
+    ): Promise<Engine> {
+        const factory = this.factories.get(engineType);
+        if (!factory) {
+            throw new Error(`No factory registered for engine type: ${engineType}`);
+        }
+        return factory.createEngine(queue, options);
+    }
+
+    static getRegisteredEngineTypes(): string[] {
+        return Array.from(this.factories.keys());
+    }
+} 

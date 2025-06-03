@@ -22,6 +22,21 @@ export class ScrapeController {
             const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
 
+            // Check if job failed
+            if (job.status === 'failed' || job.error) {
+                res.status(422).json({
+                    success: false,
+                    error: "Scrape task failed",
+                    message: job.error || "The scraping task could not be completed",
+                    details: {
+                        url: validatedData.url,
+                        engine: validatedData.engine,
+                        jobId: jobId,
+                    }
+                });
+                return;
+            }
+
             // Set credits used for this scrape request (1 credit per scrape)
             req.creditsUsed = 1;
 
@@ -40,6 +55,7 @@ export class ScrapeController {
                 res.status(400).json({
                     success: false,
                     error: "Validation error",
+                    message: error.errors.map((err) => err.message).join(", "),
                     details: {
                         issues: formattedErrors,
                         messages: error.errors.map((err) => err.message),

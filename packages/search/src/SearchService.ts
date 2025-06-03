@@ -1,6 +1,6 @@
 import { SearchEngine, SearchOptions, SearchResult, SearchTask } from "./engines/types.js";
 import { GoogleSearchEngine } from "./engines/Google.js";
-import { EngineQueueManager, Utils, CheerioEngine, CrawlingContext } from "@anycrawl/scrape";
+import { Utils, CrawlingContext, Engine, EngineFactoryRegistry } from "@anycrawl/scrape";
 import { randomUUID } from "node:crypto";
 import { log } from "@anycrawl/libs";
 
@@ -11,7 +11,7 @@ export class SearchService {
     private requestsToResponses: Map<string, (results: SearchResult[]) => void>;
     private partialResults: Map<string, SearchResult[]>;
     private pendingRequests: Map<string, number>;
-    private crawler: CheerioEngine | null = null;
+    private crawler: Engine | null = null;
     private searchQueue: any | null = null;
 
     constructor() {
@@ -44,7 +44,7 @@ export class SearchService {
         if (!this.crawler) {
             log.info("Initializing crawler...");
             this.searchQueue = await Utils.getInstance().getQueue("AnyCrawl_Search");
-            this.crawler = await EngineQueueManager.getInstance().createCheerioEngine(
+            this.crawler = await EngineFactoryRegistry.createEngine('cheerio',
                 this.searchQueue,
                 {
                     keepAlive: true,
@@ -174,6 +174,7 @@ export class SearchService {
                         ...request,
                         uniqueKey,
                         engineName,
+                        queueName: "AnyCrawl_Search"
                     },
                     uniqueKey: randomUUID(),
                 });

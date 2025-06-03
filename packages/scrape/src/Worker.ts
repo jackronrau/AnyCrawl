@@ -44,6 +44,10 @@ async function runJob(job: Job) {
 // Initialize the application
 (async () => {
     try {
+        // check redis
+        const redisClient = Utils.getInstance().getRedisConnection();
+        await redisClient.ping();
+        log.info("Redis connection established");
         // Start the worker to handle new URLs
         log.info("Starting worker...");
         await Promise.all(

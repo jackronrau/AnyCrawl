@@ -50,4 +50,40 @@ const server = app.listen(port, async () => {
     log.info(`✨ Server is running on port ${port}`);
 });
 
+// Graceful shutdown handling
+const gracefulShutdown = (signal: string) => {
+    log.info(`🔄 Received ${signal}. Starting graceful shutdown...`);
+
+    server.close((err) => {
+        if (err) {
+            log.error('❌ Error during server shutdown:', err);
+            process.exit(1);
+        }
+
+        log.info('✅ Server closed gracefully');
+        process.exit(0);
+    });
+
+    // Force shutdown if graceful shutdown takes too long
+    setTimeout(() => {
+        log.error('⚠️  Graceful shutdown timeout. Forcing exit...');
+        process.exit(1);
+    }, 10000); // 10 seconds timeout
+};
+
+// Handle process signals
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (err) => {
+    log.error('💥 Uncaught Exception:', err);
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    log.error(`💥 Unhandled Rejection at: ${promise} reason: ${reason}`);
+    gracefulShutdown('UNHANDLED_REJECTION');
+});
+
 export { server };

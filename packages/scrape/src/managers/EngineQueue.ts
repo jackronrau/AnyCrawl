@@ -1,11 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { CheerioEngine } from "../engines/Cheerio.js";
-import { CrawlingContext, Dictionary, LaunchContext, log, RequestQueueV2 } from "crawlee";
+import { log, RequestQueueV2 } from "crawlee";
 import { Utils } from "../Utils.js";
-import { PlaywrightEngine } from "../engines/Playwright.js";
-import { PuppeteerEngine } from "../engines/Puppeteer.js";
 import { EngineOptions } from "../engines/Base.js";
-import proxyConfiguration from "./Proxy.js";
+import { Engine, EngineFactoryRegistry } from "../engines/EngineFactory.js";
 
 // Define available engine types
 export const ALLOWED_ENGINES = ["playwright", "cheerio", "puppeteer"] as const;
@@ -23,52 +20,12 @@ export const AVAILABLE_ENGINES = (() => {
     return ALLOWED_ENGINES;
 })();
 
-export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
-
 // Define engine type
 export type EngineType = (typeof AVAILABLE_ENGINES)[number];
 
-const defaultOptions: EngineOptions = {
-    requestHandlerTimeoutSecs: 60,
-    // keep alive for engines even if queue is empty. default is true
-    keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
-    // proxy configuration
-    proxyConfiguration: proxyConfiguration,
-    useSessionPool: false,
-    persistCookiesPerSession: false
-};
-if (process.env.ANYCRAWL_MIN_CONCURRENCY) {
-    defaultOptions.minConcurrency = process.env.ANYCRAWL_MIN_CONCURRENCY ? parseInt(process.env.ANYCRAWL_MIN_CONCURRENCY) : 50;
-}
-if (process.env.ANYCRAWL_MAX_CONCURRENCY) {
-    defaultOptions.maxConcurrency = process.env.ANYCRAWL_MAX_CONCURRENCY ? parseInt(process.env.ANYCRAWL_MAX_CONCURRENCY) : 50;
-}
 log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
 log.info(`enable proxy: ${process.env.ANYCRAWL_PROXY_URL ? true : false}, ${process.env.ANYCRAWL_PROXY_URL}`);
-const defaultLaunchContext: Partial<LaunchContext> = {
-    launchOptions: {
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-            // for puppeteer ignore ssl errors
-            ...(process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true"
-                ? ["--ignore-certificate-errors", "--ignore-certificate-errors-spki-list"]
-                : []),
-        ],
-        // ignore https errors
-        ignoreHTTPSErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
-    },
-};
 
-const defaultHttpOptions: Record<string, any> = {
-    ignoreSslErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
-};
 // Queue manager class to handle all engine queues
 export class EngineQueueManager {
     private static instance: EngineQueueManager;
@@ -114,7 +71,7 @@ export class EngineQueueManager {
     }
 
     /**
-     * create engine
+     * create engine using factory pattern
      * @param engineType engine type
      * @param queue request queue
      * @param options engine options
@@ -125,86 +82,7 @@ export class EngineQueueManager {
         queue: RequestQueueV2,
         options?: EngineOptions
     ): Promise<Engine> {
-        switch (engineType) {
-            case "cheerio":
-                return this.createCheerioEngine(queue, options);
-            case "playwright":
-                return this.createPlaywrightEngine(queue, options);
-            case "puppeteer":
-                return this.createPuppeteerEngine(queue, options);
-            default:
-                throw new Error(`Unknown engine type: ${engineType}`);
-        }
-    }
-
-    /**
-     * create cheerio engine
-     * @param queue request queue
-     * @param options engine options
-     * @returns CheerioEngine
-     */
-    async createCheerioEngine(
-        queue: RequestQueueV2,
-        options?: EngineOptions
-    ): Promise<CheerioEngine> {
-        const engine = new CheerioEngine({
-            ...defaultOptions,
-            requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
-            additionalMimeTypes: ["text/html", "text/plain", "application/xhtml+xml"],
-            ...defaultHttpOptions,
-            ...options,
-        });
-        return engine;
-    }
-
-    /**
-     *  reate playwright engine
-     * @param queue request queue
-     * @param options engine options
-     * @returns PlaywrightEngine
-     */
-    async createPlaywrightEngine(
-        queue: RequestQueueV2,
-        options?: EngineOptions
-    ): Promise<PlaywrightEngine> {
-        const engine = new PlaywrightEngine({
-            ...defaultOptions,
-            requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
-            launchContext: defaultLaunchContext,
-            ...options,
-        });
-        return engine;
-    }
-
-    /**
-     * create puppeteer engine
-     * @param queue Request Queue
-     * @param options Engine Options
-     * @returns PuppeteerEngine
-     */
-    async createPuppeteerEngine(
-        queue: RequestQueueV2,
-        options?: EngineOptions
-    ): Promise<PuppeteerEngine> {
-        const engine = new PuppeteerEngine({
-            ...defaultOptions,
-            requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext<Dictionary>) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
-            launchContext: defaultLaunchContext,
-            ...options,
-        });
-        return engine;
+        return EngineFactoryRegistry.createEngine(engineType, queue, options);
     }
 
     async startEngines(): Promise<void> {

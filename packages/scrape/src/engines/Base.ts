@@ -1,16 +1,16 @@
-import { Configuration, KeyValueStore, log, ProxyConfiguration } from "crawlee";
-import { join } from "path";
-import {
-    RequestQueue,
-    BrowserCrawlingContext,
-    CheerioCrawlingContext,
-    PlaywrightCrawlingContext,
-    PuppeteerCrawlingContext,
-    Dictionary,
-} from "crawlee";
+import { BrowserCrawlingContext, CheerioCrawlingContext, Configuration, log, PlaywrightCrawlingContext, ProxyConfiguration, PuppeteerCrawlingContext, RequestQueue } from "crawlee";
+import { Dictionary } from "crawlee";
 import { Utils } from "../Utils.js";
-import { QueueManager, QueueName } from "../managers/Queue.js";
+import { ConfigValidator } from "../core/ConfigValidator.js";
+import { DataExtractor } from "../core/DataExtractor.js";
+import { JobManager } from "../core/JobManager.js";
+import { EngineConfigurator, ConfigurableEngineType } from "../core/EngineConfigurator.js";
 
+// Re-export core types for backward compatibility
+export type { MetadataEntry, BaseContent, ExtractionError } from "../core/DataExtractor.js";
+export { ConfigurableEngineType as BaseEngineType } from "../core/EngineConfigurator.js";
+
+// Type definitions
 export type CrawlingContext =
     | BrowserCrawlingContext<Dictionary>
     | CheerioCrawlingContext<Dictionary>
@@ -44,86 +44,147 @@ export interface EngineOptions {
     maxSessionRotations?: number;
     useSessionPool?: boolean;
     persistCookiesPerSession?: boolean;
+    headless?: boolean;
 }
 
 /**
- * BaseEngine abstract class
- * Defines the interface for all scraping engines
+ * Lightweight BaseEngine abstract class
+ * Delegates responsibilities to specialized classes
  */
 export abstract class BaseEngine {
-    /**
-     * The options for the engine
-     */
     protected options: EngineOptions = {};
-
-    /**
-     * The request queue for the engine
-     */
     protected queue: RequestQueue | undefined = undefined;
-
-    /**
-     * The key-value store for the engine
-     */
-    protected keyValueStore: KeyValueStore | undefined = undefined;
-
-    /**
-     * The engine instance used for scraping
-     */
     protected abstract engine: any;
+    protected abstract isInitialized: boolean;
 
-    /**
-     * Constructor for BaseEngine
-     * Initializes the base engine properties
-     */
+    // Composition over inheritance - use specialized classes
+    protected dataExtractor = new DataExtractor();
+    protected jobManager = new JobManager();
+
     constructor(options: EngineOptions = {}) {
-        // Base initialization logic
+        // Validate options using ConfigValidator
+        ConfigValidator.validate(options);
+
+        // Initialize storage
         Utils.getInstance().setStorageDirectory();
 
+        // Set default options
         this.options = {
             maxRequestRetries: 2,
             requestHandlerTimeoutSecs: 30,
             ...options,
         };
+
+        // Set the request queue if provided
+        this.queue = options.requestQueue;
     }
 
     /**
-     * Update the job status to completed and store the data
-     * @param jobId The job ID
-     * @param queueName The queue name
-     * @param data The data to store
+     * Create common request and failed request handlers
      */
-    public async doneJob(jobId: string, queueName: QueueName, data: any) {
-        // update status to done
-        const job = await QueueManager.getInstance().getJob(queueName, jobId);
-        if (!job) {
-            log.error(`[${queueName}] Job ${jobId} not found in queue.`);
-            return;
-        }
-        job.updateData({
-            ...job.data,
-            status: "completed",
-            ...data,
-        });
-        await (await Utils.getInstance().getKeyValueStore()).setValue(jobId, data);
+    protected createCommonHandlers(
+        customRequestHandler?: (context: any) => Promise<any>,
+        customFailedRequestHandler?: (context: any) => Promise<any> | void
+    ) {
+        const requestHandler = async (context: any) => {
+            try {
+                // Run custom handler if provided
+                if (customRequestHandler) {
+                    await customRequestHandler(context);
+                    return;
+                }
+
+                // Extract data using DataExtractor
+                const data = await this.dataExtractor.extractData(context);
+
+                // Log success
+                const { queueName, jobId } = context.request.userData;
+                log.info(`[${queueName}] [${jobId}] Pushing data for ${data.url}`);
+
+                // Update job status if jobId exists
+                if (jobId) {
+                    await this.jobManager.markCompleted(jobId, queueName, data);
+                }
+            } catch (error) {
+                if (context.request.userData.jobId) {
+                    await this.jobManager.markFailed(context.request.userData.jobId, context.request.userData.queueName, (error as Error).message);
+                }
+                this.dataExtractor.handleExtractionError(context, error as Error);
+            }
+        };
+
+        const failedRequestHandler = async (context: any, error: Error) => {
+            // Run custom handler if provided
+            if (customFailedRequestHandler) {
+                const result = customFailedRequestHandler(context);
+                if (result instanceof Promise) {
+                    await result;
+                }
+                return;
+            }
+
+            // Log failure
+            const { queueName, jobId } = context.request.userData;
+            log.error(`[${queueName}] [${jobId}] Request ${context.request.url} failed`);
+
+            // Update job status if jobId exists
+            if (jobId) {
+                await this.jobManager.markFailed(jobId, queueName, error.message);
+            }
+        };
+
+        return { requestHandler, failedRequestHandler };
     }
 
     /**
-     * Update the job status to failed
-     * @param jobId The job ID
-     * @param queueName The queue name
-     * @param error The error message
+     * Apply engine-specific configurations using EngineConfigurator
      */
-    public async failedJob(jobId: string, queueName: QueueName, error: string) {
-        // update status to failed
-        const job = await QueueManager.getInstance().getJob(queueName, jobId);
-        if (!job) {
-            log.error(`[${queueName}] Job ${jobId} not found in queue.`);
-            return;
-        }
-        job.updateData({
-            ...job.data,
-            status: "failed",
-            error,
-        });
+    protected applyEngineConfigurations(crawlerOptions: any, engineType: ConfigurableEngineType): any {
+        return EngineConfigurator.configure(crawlerOptions, engineType);
     }
-}
+
+    /**
+     * Run the crawler
+     */
+    async run(): Promise<void> {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        if (!this.engine) {
+            throw new Error("Engine not initialized");
+        }
+
+        const queueName = this.options.requestQueueName || 'default';
+
+        try {
+            log.info(`[${queueName}] Starting crawler engine`);
+            await this.engine.run();
+            log.info(`[${queueName}] Crawler engine started successfully`);
+        } catch (error) {
+            log.error(`[${queueName}] Error running crawler: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Stop the crawler
+     */
+    async stop(): Promise<void> {
+        if (this.engine) {
+            await this.engine.stop();
+        }
+    }
+
+    /**
+     * Check if the engine is initialized
+     */
+    isEngineInitialized(): boolean {
+        return this.isInitialized;
+    }
+
+    /**
+     * Abstract method for engine initialization
+     */
+    abstract init(): Promise<void>;
+} 
