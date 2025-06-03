@@ -50,8 +50,20 @@ docker compose up --build
 
 ### Environment Variables
 
-| Variable | Description | Default |
-| -------- | ----------- | ------- |
+| Variable                       | Description                                  | Default                        | Example                                                     |
+| ------------------------------ | -------------------------------------------- | ------------------------------ | ----------------------------------------------------------- |
+| `NODE_ENV`                     | Runtime environment                          | `production`                   | `production`, `development`                                 |
+| `ANYCRAWL_API_PORT`            | API service port                             | `8080`                         | `8080`                                                      |
+| `ANYCRAWL_HEADLESS`            | Use headless mode for browser engines        | `true`                         | `true`, `false`                                             |
+| `ANYCRAWL_PROXY_URL`           | Proxy server URL (supports HTTP and SOCKS)   | _(none)_                       | `http://proxy:8080`, `socks5://proxy:1080`                  |
+| `ANYCRAWL_IGNORE_SSL_ERROR`    | Ignore SSL certificate errors                | `true`                         | `true`, `false`                                             |
+| `ANYCRAWL_KEEP_ALIVE`          | Keep connections alive between requests      | `true`                         | `true`, `false`                                             |
+| `ANYCRAWL_AVAILABLE_ENGINES`   | Available scraping engines (comma-separated) | `cheerio,playwright,puppeteer` | `playwright,puppeteer`                                      |
+| `ANYCRAWL_API_DB_TYPE`         | Database type                                | `sqlite`                       | `sqlite`, `postgresql`                                      |
+| `ANYCRAWL_API_DB_CONNECTION`   | Database connection string/path              | `/usr/src/app/db/database.db`  | `/path/to/db.sqlite`, `postgresql://user:pass@localhost/db` |
+| `ANYCRAWL_REDIS_URL`           | Redis connection URL                         | `redis://redis:6379`           | `redis://localhost:6379`                                    |
+| `ANYCRAWL_API_AUTH_ENABLED`    | Enable API authentication                    | `false`                        | `true`, `false`                                             |
+| `ANYCRAWL_API_CREDITS_ENABLED` | Enable credit system                         | `false`                        | `true`, `false`                                             |
 
 ## 📚 Usage Examples
 
@@ -107,7 +119,7 @@ curl --location 'http://localhost:8080/v1/search' \
 ### Common Questions
 
 1. **Q: Can I use proxies?**
-   A: Yes, AnyCrawl supports both HTTP and SOCKS proxies. Configure them through the `PROXY_URL` environment variable.
+   A: Yes, AnyCrawl supports both HTTP and SOCKS proxies. Configure them through the `ANYCRAWL_PROXY_URL` environment variable.
 
 2. **Q: How to handle JavaScript-rendered content?**
    A: AnyCrawl supports Puppeteer and Playwright for JavaScript rendering needs.
