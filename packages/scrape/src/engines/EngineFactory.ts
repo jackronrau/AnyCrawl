@@ -45,6 +45,10 @@ const defaultLaunchContext: Partial<LaunchContext> = {
         ],
         ignoreHTTPSErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
     },
+    // Add user agent if set
+    ...(process.env.ANYCRAWL_USER_AGENT ? {
+        userAgent: process.env.ANYCRAWL_USER_AGENT
+    } : {}),
 };
 
 const defaultHttpOptions: Record<string, any> = {
