@@ -55,7 +55,6 @@ const availableEngines = EngineFactoryRegistry.getRegisteredEngineTypes();
 - **Performance**: Highest (no browser overhead)
 - **JavaScript Support**: No
 - **Resource Usage**: Low
-- **Additional Features**: Supports custom MIME types
 
 ### PlaywrightEngine
 
@@ -64,7 +63,6 @@ const availableEngines = EngineFactoryRegistry.getRegisteredEngineTypes();
 - **JavaScript Support**: Full
 - **Browser Support**: Chromium, Firefox, WebKit
 - **Resource Usage**: Medium-High
-- **Special Features**: Cross-browser testing capabilities
 
 ### PuppeteerEngine
 
@@ -73,7 +71,6 @@ const availableEngines = EngineFactoryRegistry.getRegisteredEngineTypes();
 - **JavaScript Support**: Full
 - **Browser Support**: Chrome/Chromium only
 - **Resource Usage**: Medium-High
-- **Special Features**: Chrome DevTools Protocol access
 
 ## Core Modules Integration
 

@@ -1,5 +1,6 @@
 <div align="center">
 
+<img src="https://anycrawl.dev/logo.svg" alt="AnyCrawl" height="100">
 <h1>
   AnyCrawl
 </h1>
@@ -67,48 +68,58 @@ docker compose up --build
 
 ## 📚 Usage Examples
 
+💡 **You can use [Playground](https://anycrawl.dev/playground) to test APIs and generate code examples for your preferred programming language.**
+
+> **Note**: If you are self-hosting AnyCrawl, make sure to replace `https://api.anycrawl.dev` with your own server URL.
+
 ### Web Scraping
 
 #### Basic Usage
 
 ```typescript
 
-curl --location 'http://localhost:8080/v1/scrape' \
---header 'Content-Type: application/json' \
---data '{
-    "url": "https://example.com/",
-    "engine": "playwright"
+curl -X POST http://localhost:8080/v1/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer YOUR_ANYCRAWL_API_KEY' \
+  -d '{
+  "url": "https://example.com",
+  "engine": "cheerio"
 }'
 
 ```
 
 #### Parameters
 
-| Parameter | Type              | Description                                                                                                                                                                                           |
-| --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| url       | string (required) | The URL to be scraped. Must be a valid URL starting with http:// or https://                                                                                                                          |
-| engine    | string            | Scraping engine to use. Options: `cheerio` (static HTML parsing, fastest), `playwright` (JavaScript rendering with modern engine), `puppeteer` (JavaScript rendering with Chrome). Default: `cheerio` |
+| Parameter | Type              | Description                                                                                                                                                                       | Default  |
+| --------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| url       | string (required) | The URL to be scraped. Must be a valid URL starting with http:// or https://                                                                                                      | -        |
+| engine    | string            | Scraping engine to use. Options: `cheerio` (static HTML parsing, fastest), `playwright` (JavaScript rendering with modern engine), `puppeteer` (JavaScript rendering with Chrome) | cheerio  |
+| proxy     | string            | Proxy URL for the request. Supports HTTP and SOCKS proxies. Format: `http://[username]:[password]@proxy:port`                                                                     | _(none)_ |
 
 ### Search Engine Results (SERP)
 
 #### Basic Usage
 
 ```typescript
-curl --location 'http://localhost:8080/v1/search' \
---header 'Content-Type: application/json' \
---data '{
-    "query": "search keyword"
+curl -X POST http://localhost:8080/v1/search \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer YOUR_ANYCRAWL_API_KEY' \
+  -d '{
+  "query": "AnyCrawl",
+  "limit": 10,
+  "engine": "google",
+  "lang": "all"
 }'
 ```
 
 #### Parameters
 
-| Parameter | Type              | Description                                         | Default |
-| --------- | ----------------- | --------------------------------------------------- | ------- |
-| `query`   | string (required) | Search query to be executed                         | -       |
-| `engine`  | string            | Search engine to use. Options: `google`             | google  |
-| `pages`   | integer           | Number of search result pages to retrieve           | 1       |
-| `lang`    | string            | Language code for search results (e.g., 'en', 'zh') | en-US   |
+| Parameter | Type              | Description                                                | Default |
+| --------- | ----------------- | ---------------------------------------------------------- | ------- |
+| `query`   | string (required) | Search query to be executed                                | -       |
+| `engine`  | string            | Search engine to use. Options: `google`                    | google  |
+| `pages`   | integer           | Number of search result pages to retrieve                  | 1       |
+| `lang`    | string            | Language code for search results (e.g., 'en', 'zh', 'all') | en-US   |
 
 #### Supported Search Engines
 
