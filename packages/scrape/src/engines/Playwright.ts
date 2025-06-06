@@ -1,4 +1,4 @@
-import { BaseEngine, EngineOptions, BaseEngineType } from "./Base.js";
+import { BaseEngine, EngineOptions, BaseEngineType, CrawlingContext } from "./Base.js";
 import {
     Dictionary,
     PlaywrightCrawler,
@@ -9,9 +9,9 @@ export class PlaywrightEngine extends BaseEngine {
     protected engine: PlaywrightCrawler | null = null;
     protected isInitialized: boolean = false;
     protected customRequestHandler?: (
-        context: PlaywrightCrawlingContext<Dictionary>
-    ) => Promise<void>;
-    protected customFailedRequestHandler?: (context: PlaywrightCrawlingContext<Dictionary>) => void;
+        context: CrawlingContext
+    ) => Promise<any> | void;
+    protected customFailedRequestHandler?: (context: CrawlingContext, error: Error) => Promise<any> | void;
 
     constructor(options: EngineOptions = {}) {
         super(options);

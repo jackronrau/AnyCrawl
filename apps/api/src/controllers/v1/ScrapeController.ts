@@ -15,11 +15,19 @@ export class ScrapeController {
                 engine: validatedData.engine,
                 options: {
                     proxy: validatedData.proxy,
+                    formats: validatedData.formats,
+                    timeout: validatedData.timeout,
+                    retry: validatedData.retry,
+                    waitFor: validatedData.wait_for,
+                    includeTags: validatedData.include_tags,
+                    excludeTags: validatedData.exclude_tags,
                     // TODO support more options
+                    // only_main_content
+                    // proxy stealth?
                 },
             });
             // waiting job done
-            const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId);
+            const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId, validatedData.timeout || 30_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
 
             // Check if job failed

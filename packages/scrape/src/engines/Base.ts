@@ -1,4 +1,4 @@
-import { BrowserCrawlingContext, CheerioCrawlingContext, Configuration, log, PlaywrightCrawlingContext, ProxyConfiguration, PuppeteerCrawlingContext, RequestQueue } from "crawlee";
+import { BrowserCrawlingContext, CheerioCrawlingContext, Configuration, log, PlaywrightCrawlingContext, ProxyConfiguration, PuppeteerCrawlingContext, RequestQueue, sleep } from "crawlee";
 import { Dictionary } from "crawlee";
 import { Utils } from "../Utils.js";
 import { ConfigValidator } from "../core/ConfigValidator.js";
@@ -22,8 +22,8 @@ export interface EngineOptions {
     maxConcurrency?: number;
     maxRequestRetries?: number;
     requestHandlerTimeoutSecs?: number;
-    requestHandler?: (context: CrawlingContext) => Promise<any>;
-    failedRequestHandler?: (context: CrawlingContext) => Promise<any>;
+    requestHandler?: (context: CrawlingContext) => Promise<any> | void;
+    failedRequestHandler?: (context: CrawlingContext, error: Error) => Promise<any> | void;
     maxRequestsPerCrawl?: number;
     maxRequestTimeout?: number;
     navigationTimeoutSecs?: number;
@@ -35,6 +35,10 @@ export interface EngineOptions {
     launchContext?: {
         launchOptions?: {
             args?: string[];
+            defaultViewport?: {
+                width: number;
+                height: number;
+            };
         };
     };
     preNavigationHooks?: ((context: CrawlingContext) => Promise<any>)[];
@@ -83,11 +87,20 @@ export abstract class BaseEngine {
      * Create common request and failed request handlers
      */
     protected createCommonHandlers(
-        customRequestHandler?: (context: any) => Promise<any>,
-        customFailedRequestHandler?: (context: any) => Promise<any> | void
+        customRequestHandler?: (context: CrawlingContext) => Promise<any> | void,
+        customFailedRequestHandler?: (context: CrawlingContext, error: Error) => Promise<any> | void
     ) {
-        const requestHandler = async (context: any) => {
+        const requestHandler = async (context: CrawlingContext) => {
             try {
+                // check if waitFor is set, and it is browser engine
+                if (context.request.userData.options.waitFor) {
+                    if (context.page) {
+                        log.debug(`Waiting for ${context.request.userData.options.waitFor} seconds for ${context.request.url}`);
+                        await sleep(context.request.userData.options.waitFor);
+                    } else {
+                        log.warning(`'waitFor' option is not supported for non-browser crawlers. URL: ${context.request.url}`);
+                    }
+                }
                 // Run custom handler if provided
                 if (customRequestHandler) {
                     await customRequestHandler(context);
@@ -96,7 +109,6 @@ export abstract class BaseEngine {
 
                 // Extract data using DataExtractor
                 const data = await this.dataExtractor.extractData(context);
-
                 // Log success
                 const { queueName, jobId } = context.request.userData;
                 log.info(`[${queueName}] [${jobId}] Pushing data for ${data.url}`);
@@ -116,16 +128,13 @@ export abstract class BaseEngine {
         const failedRequestHandler = async (context: any, error: Error) => {
             // Run custom handler if provided
             if (customFailedRequestHandler) {
-                const result = customFailedRequestHandler(context);
-                if (result instanceof Promise) {
-                    await result;
-                }
+                await customFailedRequestHandler(context, error);
                 return;
             }
 
             // Log failure
             const { queueName, jobId } = context.request.userData;
-            log.error(`[${queueName}] [${jobId}] Request ${context.request.url} failed`);
+            log.error(`[${queueName}] [${jobId}] Request ${context.request.url} failed with error: ${error.message}`);
 
             // Update job status if jobId exists
             if (jobId) {
