@@ -90,7 +90,29 @@ export abstract class BaseEngine {
         customRequestHandler?: (context: CrawlingContext) => Promise<any> | void,
         customFailedRequestHandler?: (context: CrawlingContext, error: Error) => Promise<any> | void
     ) {
+        const checkHttpError = async (context: CrawlingContext) => {
+            if (context.response) {
+                const response = context.response as any;
+                const statusCode = typeof response.status === 'function' ? response.status() : response.statusCode;
+                // Puppeteer/Playwright use statusText(), Got/Cheerio uses statusMessage
+                const statusMessage = typeof response.statusText === 'function' ? response.statusText() : response.statusMessage;
+
+                if (statusCode >= 400) {
+                    await this.jobManager.markFailed(context.request.userData.jobId, context.request.userData.queueName, `Page is not available: ${statusCode} ${statusMessage}`, {
+                        statusCode: statusCode,
+                        statusMessage: statusMessage,
+                    });
+                    return true;
+                }
+            }
+            return false;
+        }
         const requestHandler = async (context: CrawlingContext) => {
+            // check if http status code is 400 or higher
+            const isHttpError = await checkHttpError(context);
+            if (isHttpError) {
+                return;
+            }
             try {
                 // check if waitFor is set, and it is browser engine
                 if (context.request.userData.options.waitFor) {
@@ -125,7 +147,11 @@ export abstract class BaseEngine {
             }
         };
 
-        const failedRequestHandler = async (context: any, error: Error) => {
+        const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
+            const isHttpError = await checkHttpError(context);
+            if (isHttpError) {
+                return;
+            }
             // Run custom handler if provided
             if (customFailedRequestHandler) {
                 await customFailedRequestHandler(context, error);

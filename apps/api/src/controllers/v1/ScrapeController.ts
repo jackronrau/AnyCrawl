@@ -29,10 +29,10 @@ export class ScrapeController {
             // waiting job done
             const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId, validatedData.timeout || 30_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
-
             // Check if job failed
             if (job.status === 'failed' || job.error) {
-                res.status(422).json({
+                const statusCode = jobData.statusCode || 422;
+                res.status(statusCode).json({
                     success: false,
                     error: "Scrape task failed",
                     message: job.error || "The scraping task could not be completed",
