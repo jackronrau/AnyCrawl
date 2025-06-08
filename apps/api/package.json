@@ -11,9 +11,9 @@
         "start": "NODE_ENV=production node ./dist/index.js",
         "db:generate": "pnpm run drizzle -- drizzle-kit generate",
         "db:migrate": "pnpm run drizzle -- drizzle-kit migrate",
-        "test": "pnpm run drizzle -- jest --detectOpenHandles --forceExit",
-        "test:watch": "pnpm run drizzle -- jest --watch --detectOpenHandles",
-        "test:coverage": "pnpm run drizzle -- jest --coverage --detectOpenHandles --forceExit"
+        "test": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --detectOpenHandles --forceExit",
+        "test:watch": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --watch --detectOpenHandles",
+        "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --coverage --detectOpenHandles --forceExit"
     },
     "dependencies": {
         "@anycrawl/libs": "workspace:*",

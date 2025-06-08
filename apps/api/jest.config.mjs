@@ -1,7 +1,5 @@
-import type { Config } from "jest";
-
-const config: Config = {
-    preset: "ts-jest",
+const config = {
+    preset: "ts-jest/presets/default-esm",
     testEnvironment: "node",
     extensionsToTreatAsEsm: [".ts"],
     moduleNameMapper: {
@@ -12,7 +10,11 @@ const config: Config = {
             "ts-jest",
             {
                 useESM: true,
-                tsconfig: "tsconfig.json",
+                tsconfig: {
+                    module: "NodeNext",
+                    moduleResolution: "NodeNext",
+                    target: "ES2022",
+                },
             },
         ],
     },
@@ -20,4 +22,4 @@ const config: Config = {
     verbose: true,
 };
 
-export default config;
+export default config; 
