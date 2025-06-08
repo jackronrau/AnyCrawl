@@ -44,7 +44,6 @@ export class JobManager {
         job.updateData({
             ...job.data,
             status: "failed",
-            error,
             ...data,
         });
     }

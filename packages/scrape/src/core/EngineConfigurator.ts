@@ -91,14 +91,17 @@ export class EngineConfigurator {
         if (options.headless === undefined) {
             options.headless = process.env.ANYCRAWL_HEADLESS !== "false";
         }
-        // set retry configuration
-        if (options.retry === true) {
-            options.maxRequestRetries = 3;
-        } else {
-            options.maxRequestRetries = 1;
-        }
         // try to bypass any detected bot protection
         options.retryOnBlocked = true;
+
+        options.maxRequestRetries = 3;
+        options.maxSessionRotations = 3;
+
+        // Configure session pool with empty blocked status codes since we handle them manually
+        options.sessionPoolOptions = {
+            ...options.sessionPoolOptions,
+            blockedStatusCodes: [401, 403, 429],
+        };
     }
 
     private static configurePuppeteer(options: any): void {
