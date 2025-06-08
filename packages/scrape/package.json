@@ -9,8 +9,7 @@
         "watch": "pnpm run drizzle -- tsc --watch",
         "build": "pnpm run drizzle -- tsc",
         "dev": "nodemon --watch src -e ts,json --exec 'pnpm run drizzle -- tsx ./src/Worker.ts'",
-        "start": "pnpm run drizzle -- node dist/Worker.js",
-        "test": "tsx src/Test.ts"
+        "start": "pnpm run drizzle -- node dist/Worker.js"
     },
     "exports": {
         ".": {

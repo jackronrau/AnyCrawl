@@ -1,4 +1,4 @@
-import { BaseEngine, EngineOptions, BaseEngineType } from "./Base.js";
+import { BaseEngine, EngineOptions, BaseEngineType, CrawlingContext } from "./Base.js";
 import {
     Dictionary,
     PuppeteerCrawler,
@@ -9,9 +9,9 @@ export class PuppeteerEngine extends BaseEngine {
     protected engine: PuppeteerCrawler | null = null;
     protected isInitialized: boolean = false;
     protected customRequestHandler?: (
-        context: PuppeteerCrawlingContext<Dictionary>
-    ) => Promise<void>;
-    protected customFailedRequestHandler?: (context: PuppeteerCrawlingContext<Dictionary>) => void;
+        context: CrawlingContext
+    ) => Promise<any> | void;
+    protected customFailedRequestHandler?: (context: CrawlingContext, error: Error) => Promise<any> | void;
 
     constructor(options: EngineOptions = {}) {
         super(options);

@@ -1,5 +1,9 @@
-import { log } from "crawlee";
+import { log } from "@anycrawl/libs"
 import { htmlToMarkdown } from "@anycrawl/libs/html-to-markdown";
+import { HTMLTransformer, ExtractionOptions } from "./transformers/HTMLTransformer.js";
+import { CrawlingContext } from "../engines/Base.js";
+import { Utils } from "../Utils.js";
+import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
 
 export interface MetadataEntry {
     name: string;
@@ -10,7 +14,13 @@ export interface MetadataEntry {
 export interface BaseContent {
     url: string;
     title: string;
-    html: string;
+    rawHtml: string;
+    [key: string]: any;
+}
+
+export interface AdditionalFields {
+    html?: string;
+    markdown?: string;
     [key: string]: any;
 }
 
@@ -25,6 +35,14 @@ export interface ExtractionError {
  * Handles all data extraction and transformation logic
  */
 export class DataExtractor {
+    private htmlTransformer: HTMLTransformer;
+    private screenshotTransformer: ScreenshotTransformer;
+
+    constructor() {
+        this.htmlTransformer = new HTMLTransformer();
+        this.screenshotTransformer = new ScreenshotTransformer();
+    }
+
     /**
      * Get cheerio instance using unified approach
      */
@@ -44,24 +62,23 @@ export class DataExtractor {
      * Extract base content (url, title, html) in a unified way
      */
     async extractBaseContent(context: any, $: any): Promise<BaseContent> {
-        const title = $('title').text().trim();
-
-        let html = "";
-        if (context.parseWithCheerio || context.body) {
-            // parseWithCheerio or body (Cheerio engine) is available
-            html = context.body.toString("utf-8");
-        } else if (context.page?.content) {
+        let rawHtml = "";
+        if (context.body) {
+            // body (Cheerio engine) is available
+            rawHtml = context.body.toString("utf-8");
+        } else if (context.page.content) {
             // page.content (browser engines) is available
-            html = await context.page.content();
+            rawHtml = await context.page.content();
         } else {
             // Fallback: try to get HTML from cheerio if available (Cheerio engine)
-            html = $('html').length > 0 ? $('html').parent().html() || $.html() : '';
+            rawHtml = $('html').length > 0 ? $('html').parent().html() || $.html() : '';
         }
+        const title = $('title').text().trim();
 
         return {
             url: context.request.url,
             title,
-            html,
+            rawHtml,
         };
     }
 
@@ -99,17 +116,17 @@ export class DataExtractor {
     /**
      * Assemble final data object
      */
-    assembleData(context: any, baseContent: BaseContent, metadata: MetadataEntry[], markdown: string): any {
+    assembleData(context: any, baseContent: BaseContent, metadata: MetadataEntry[], additionalFields: AdditionalFields): any {
         const jobId = context.request.userData["jobId"];
-        const { url, title, html, ...additionalFields } = baseContent;
+        const { url, title, rawHtml, ...baseAdditionalFields } = baseContent;
 
         return {
-            job_id: jobId,
+            jobId: jobId,
             url,
             title,
-            html,
+            ...(context.request.userData["options"]["formats"].includes("rawHtml") ? { rawHtml } : {}),
             metadata,
-            markdown,
+            ...baseAdditionalFields,
             ...additionalFields,
             timestamp: new Date().toISOString(),
         };
@@ -118,19 +135,47 @@ export class DataExtractor {
     /**
      * Extract all data from context
      */
-    async extractData(context: any): Promise<any> {
+    async extractData(context: CrawlingContext): Promise<any> {
         const $ = await this.getCheerioInstance(context);
         const baseContent = await this.extractBaseContent(context, $);
         const metadata = this.extractMetadata($);
-        const markdown = this.processMarkdown(baseContent.html);
+        const formats = context.request.userData["options"]["formats"];
+        const options = context.request.userData["options"];
+        const additionalFields: AdditionalFields = {};
 
-        return this.assembleData(context, baseContent, metadata, markdown);
+        if (formats.includes("html") || formats.includes("markdown")) {
+            // Extract clean HTML content with optional include/exclude tags
+            const extractionOptions: ExtractionOptions = {
+                includeTags: options.includeTags,
+                excludeTags: options.excludeTags
+            };
+
+            const cleanHtml = this.htmlTransformer.extractCleanHtml($, extractionOptions);
+
+            if (formats.includes("html")) {
+                additionalFields.html = cleanHtml;
+            }
+
+            if (formats.includes("markdown")) {
+                // Use clean HTML for markdown conversion
+                additionalFields.markdown = this.processMarkdown(cleanHtml);
+            }
+        }
+        if (formats.includes("rawHtml")) {
+            additionalFields.rawHtml = baseContent.rawHtml;
+        }
+        // Handle screenshot capture for browser engines
+        const page = (context as any).page;
+        if (page && typeof context.saveSnapshot === 'function' && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
+            additionalFields.screenshot = await this.screenshotTransformer.captureAndStoreScreenshot(context, page, formats);
+        }
+        return this.assembleData(context, baseContent, metadata, additionalFields);
     }
 
     /**
      * Handle extraction errors
      */
-    handleExtractionError(context: any, error: Error): never {
+    handleExtractionError(context: CrawlingContext, error: Error): never {
         const jobId = context.request.userData["jobId"];
         const queueName = context.request.userData["queueName"];
 

@@ -1,4 +1,4 @@
-import { BaseEngine, EngineOptions, BaseEngineType } from "./Base.js";
+import { BaseEngine, EngineOptions, BaseEngineType, CrawlingContext } from "./Base.js";
 import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from "crawlee";
 
 /**
@@ -8,10 +8,11 @@ import { CheerioCrawler, log, CheerioCrawlingContext, Dictionary, Dataset } from
 export class CheerioEngine extends BaseEngine {
     protected engine: CheerioCrawler | null = null;
     protected isInitialized: boolean = false;
-    protected customRequestHandler?: (context: CheerioCrawlingContext<Dictionary>) => Promise<any>;
+    protected customRequestHandler?: (context: CrawlingContext) => Promise<any> | void;
     protected customFailedRequestHandler?: (
-        context: CheerioCrawlingContext<Dictionary>
-    ) => Promise<any>;
+        context: CrawlingContext,
+        error: Error
+    ) => Promise<any> | void;
 
     /**
      * Constructor for CheerioEngine

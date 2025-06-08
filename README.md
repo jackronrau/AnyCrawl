@@ -56,7 +56,7 @@ docker compose up --build
 | `NODE_ENV`                     | Runtime environment                          | `production`                   | `production`, `development`                                 |
 | `ANYCRAWL_API_PORT`            | API service port                             | `8080`                         | `8080`                                                      |
 | `ANYCRAWL_HEADLESS`            | Use headless mode for browser engines        | `true`                         | `true`, `false`                                             |
-| `ANYCRAWL_PROXY_URL`           | Proxy server URL (supports HTTP and SOCKS)   | _(none)_                       | `http://proxy:8080`, `socks5://proxy:1080`                  |
+| `ANYCRAWL_PROXY_URL`           | Proxy server URL (supports HTTP and SOCKS)   | _(none)_                       | `http://proxy:8080`                                         |
 | `ANYCRAWL_IGNORE_SSL_ERROR`    | Ignore SSL certificate errors                | `true`                         | `true`, `false`                                             |
 | `ANYCRAWL_KEEP_ALIVE`          | Keep connections alive between requests      | `true`                         | `true`, `false`                                             |
 | `ANYCRAWL_AVAILABLE_ENGINES`   | Available scraping engines (comma-separated) | `cheerio,playwright,puppeteer` | `playwright,puppeteer`                                      |

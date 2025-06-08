@@ -32,7 +32,7 @@ export class JobManager {
     /**
      * Mark a job as failed
      */
-    async markFailed(jobId: string, queueName: QueueName, error: string): Promise<void> {
+    async markFailed(jobId: string, queueName: QueueName, error: string, data?: any): Promise<void> {
         const job = await QueueManager.getInstance().getJob(queueName, jobId);
 
         if (!job) {
@@ -44,7 +44,7 @@ export class JobManager {
         job.updateData({
             ...job.data,
             status: "failed",
-            error,
+            ...data,
         });
     }
 } 

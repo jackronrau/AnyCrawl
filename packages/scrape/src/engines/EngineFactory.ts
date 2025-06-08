@@ -43,6 +43,10 @@ const defaultLaunchContext: Partial<LaunchContext> = {
                 ? ["--ignore-certificate-errors", "--ignore-certificate-errors-spki-list"]
                 : []),
         ],
+        defaultViewport: {
+            width: 1920,
+            height: 1080
+        },
         ignoreHTTPSErrors: process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false,
     },
     // Add user agent if set
@@ -61,10 +65,6 @@ export class CheerioEngineFactory implements IEngineFactory {
         return new CheerioEngine({
             ...defaultOptions,
             requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
             additionalMimeTypes: ["text/html", "text/plain", "application/xhtml+xml"],
             ...defaultHttpOptions,
             ...options,
@@ -77,10 +77,6 @@ export class PlaywrightEngineFactory implements IEngineFactory {
         return new PlaywrightEngine({
             ...defaultOptions,
             requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
             launchContext: defaultLaunchContext,
             ...options,
         });
@@ -92,10 +88,6 @@ export class PuppeteerEngineFactory implements IEngineFactory {
         return new PuppeteerEngine({
             ...defaultOptions,
             requestQueue: queue,
-            failedRequestHandler: async (context: CrawlingContext) => {
-                const { request, error } = context;
-                log.error(`Request ${request.url} failed with error: ${error}`);
-            },
             launchContext: defaultLaunchContext,
             ...options,
         });

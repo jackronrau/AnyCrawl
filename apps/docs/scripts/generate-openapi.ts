@@ -76,7 +76,7 @@ const scrapeSuccessResponseSchema = z.object({
                 description: 'The status of the scraping job when successful',
                 example: 'completed'
             }),
-            job_id: z.string().uuid().openapi({
+            jobId: z.string().uuid().openapi({
                 description: 'Unique identifier for the scraping job',
                 example: '7a2e165d-8f81-4be6-9ef7-23222330a396'
             }),

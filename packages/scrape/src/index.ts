@@ -7,3 +7,4 @@ export * from "./engines/index.js";
 export * from "./managers/EngineQueue.js";
 export * from "./managers/Queue.js";
 export * from "./Utils.js";
+export * from "./types/crawler.js";

@@ -4,14 +4,22 @@ import { randomUUID } from "node:crypto";
 import { Utils } from "../Utils.js";
 import { EngineType } from "./EngineQueue.js";
 
-interface requestTask {
+export interface RequestTaskOptions {
+    headless?: boolean;
+    proxy?: string;
+    formats?: string[];
+    timeout?: number;
+    retry?: boolean;
+    waitFor?: number;
+    includeTags?: string[];
+    excludeTags?: string[];
+}
+
+export interface RequestTask {
     url: string;
     engine: EngineType;
     queueName?: QueueName;
-    options?: {
-        headless?: boolean;
-        proxy?: string;
-    };
+    options?: RequestTaskOptions;
 }
 
 export type QueueName = "scrape" | "crawler" | string;
@@ -77,7 +85,7 @@ export class QueueManager {
      * @param queueName Name of the queue
      * @param data Job data
      */
-    public async addJob(queueName: QueueName, data: requestTask): Promise<string> {
+    public async addJob(queueName: QueueName, data: RequestTask): Promise<string> {
         const queue = this.getQueue(queueName);
         const jobId = randomUUID();
         log.info(`Adding job to queue ${queueName} with jobId ${jobId}`);

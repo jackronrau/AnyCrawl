@@ -29,7 +29,7 @@ export class Utils {
 
     public async initializeKeyValueStore(): Promise<void> {
         if (!this.keyValueStore) {
-            this.keyValueStore = await KeyValueStore.open("AnyCrawl");
+            this.keyValueStore = await KeyValueStore.open(this.getStorageName());
             log.info("KeyValueStore initialized");
         }
     }
@@ -102,5 +102,9 @@ export class Utils {
         await engine.init();
         await engine.getEngine().run();
         await queue.drop();
+    }
+
+    public getStorageName(): string {
+        return process.env.ANYCRAWL_NAME_KEY_VALUE_STORE || 'AnyCrawl';
     }
 }
