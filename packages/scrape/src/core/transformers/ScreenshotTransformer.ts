@@ -108,16 +108,21 @@ export class ScreenshotTransformer {
             let screenshotOptions: any;
 
             if (formats.includes("screenshot@fullPage")) {
-                fileName = `screenshot-fullPage-${jobId}`;
+                fileName = `screenshot-fullPage-${jobId}.jpeg`;
                 screenshotOptions = { fullPage: true, quality: 100, type: 'jpeg' };
             } else if (formats.includes("screenshot")) {
-                fileName = `screenshot-${jobId}`;
+                fileName = `screenshot-${jobId}.jpeg`;
                 screenshotOptions = { quality: 100, type: 'jpeg' };
+            } else {
+                return;
             }
 
-            if (fileName && screenshotOptions) {
-                const screenshot = await page.screenshot(screenshotOptions);
-                await this.s3.uploadImage(fileName, screenshot);
+            const screenshot = await page.screenshot(screenshotOptions);
+            if (process.env.ANYCRAWL_STORAGE === 's3') {
+                await this.s3.uploadImage(fileName!, screenshot);
+            } else {
+                const keyValueStore = await Utils.getInstance().getKeyValueStore();
+                await keyValueStore.setValue(fileName!, screenshot, { contentType: `image/${screenshotOptions.type}` });
             }
             return fileName;
         } catch (error) {

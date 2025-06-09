@@ -47,6 +47,11 @@ export class ScrapeController {
             // Set credits used for this scrape request (1 credit per scrape)
             req.creditsUsed = 1;
 
+            // Add domain prefix to screenshot path if it exists
+            if (jobData.screenshot) {
+                jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/file/${jobData.screenshot}`;
+            }
+
             res.json({
                 success: true,
                 data: jobData,
