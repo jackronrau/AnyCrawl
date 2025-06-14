@@ -26,7 +26,7 @@ COPY packages/ ./packages/
 # Install dependencies and build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm run build --filter=!docs
+RUN pnpm --filter='!docs' run build
 
 FROM base AS api
 WORKDIR /usr/src/app
