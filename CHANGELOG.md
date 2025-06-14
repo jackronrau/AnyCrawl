@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-alpha.5] - 2025-06-14
+
+### Added
+
+- Integrated AWS S3 storage support with new `S3` class and environment variables for seamless file uploads and retrievals.
+- Introduced `FileController` for serving files from S3 or local storage with robust path validation and error handling.
+- Added multiple content transformers (Screenshot, `HTMLTransformer`) improving HTML/Markdown extraction and screenshot generation.
+- Extended scraping capabilities with new options: output `formats`, `timeout`, tag filtering, `wait_for`, retry strategy, viewport configuration, and custom user-agent support.
+- Added Safe Search parameter to `SearchSchema` for filtered search results.
+- Refactored engine architecture with a factory pattern and new core modules for configuration validation, data extraction, and job management.
+- Implemented graceful shutdown handling for the API server and improved logging for uncaught exceptions / unhandled rejections.
+- Added Jest configuration for API and library packages with ESM support and updated test scripts.
+- Updated CI workflows to publish Docker images on version tags.
+- Expanded README with detailed environment variable descriptions and API usage examples.
+
+### Changed
+
+- Refined error handling in `ScrapeController` and `JobManager`; failure responses now include structured error objects and HTTP status codes.
+- Enhanced `BaseEngine` with explicit HTTP error checks and resilience improvements.
+- Updated OpenAPI documentation to reflect new scraping parameters and error formats.
+- Migrated key-value store name to environment configuration for greater flexibility.
+- Enhanced per-request credit tracking in `ScrapeController` and enhanced logging middleware to include credit usage.
+
+### Fixed
+
+- Improved job failure messages to include detailed error data, ensuring clearer debugging information.
+- Minor documentation corrections and clarifications.
+
 ## [0.0.1-alpha.4] - 2025-05-26
 
 ### Changed
