@@ -4,10 +4,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { log } from "./log.js";
 
 class S3 {
-    private client: S3Client;
-    private bucket: string;
+    private client?: S3Client;
+    private bucket?: string;
 
     constructor() {
+        if (process.env.ANYCRAWL_STORAGE !== "s3") {
+            return;
+        }
+
         if (!process.env.ANYCRAWL_S3_ENDPOINT) {
             throw new Error("ANYCRAWL_S3_ENDPOINT is required");
         }
