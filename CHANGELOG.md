@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-alpha.6] - 2025-06-15
+
+### Changed
+
+- Improved flexibility in S3 integration.
+
+### Fixed
+
+- Streamlined job payload structure in `ScrapeController` by transforming validated request data.
+- Updated `ScrapeSchema` to encapsulate options within a single object for improved clarity and maintainability.
+
 ## [0.0.1-alpha.5] - 2025-06-14
 
 ### Added
