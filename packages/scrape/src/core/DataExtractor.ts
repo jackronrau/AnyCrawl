@@ -119,12 +119,13 @@ export class DataExtractor {
     assembleData(context: any, baseContent: BaseContent, metadata: MetadataEntry[], additionalFields: AdditionalFields): any {
         const jobId = context.request.userData["jobId"];
         const { url, title, rawHtml, ...baseAdditionalFields } = baseContent;
+        const formats = context.request.userData?.options?.formats;
 
         return {
             jobId: jobId,
             url,
             title,
-            ...(context.request.userData["options"]["formats"].includes("rawHtml") ? { rawHtml } : {}),
+            ...(Array.isArray(formats) && formats.includes("rawHtml") ? { rawHtml } : {}),
             metadata,
             ...baseAdditionalFields,
             ...additionalFields,
