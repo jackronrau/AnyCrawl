@@ -34,7 +34,7 @@ export class ScrapeController {
 
             // Add domain prefix to screenshot path if it exists
             if (jobData.screenshot) {
-                jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/file/${jobData.screenshot}`;
+                jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/public/storage/file/${jobData.screenshot}`;
             }
 
             res.json({

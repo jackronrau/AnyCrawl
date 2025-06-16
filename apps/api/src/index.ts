@@ -1,5 +1,6 @@
 import express from "express";
-import v1Router from "./routers/v1.js";
+import v1Router from "./routers/v1/index.js";
+import v1PublicRouter from "./routers/v1/public.js";
 import bodyParser from "body-parser";
 import cors from "cors";
 import morgan from "morgan";
@@ -35,6 +36,9 @@ app.get("/", (_req: express.Request, res: express.Response) => {
 app.get("/health", (_req: express.Request, res: express.Response) => {
     res.status(200).json({ status: "ok" });
 });
+
+// load public routers
+app.use("/v1/public", v1PublicRouter);
 
 // check Auth
 app.use(authMiddleware);
