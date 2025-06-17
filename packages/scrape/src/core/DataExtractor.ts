@@ -4,7 +4,7 @@ import { HTMLTransformer, ExtractionOptions, TransformOptions } from "./transfor
 import { CrawlingContext } from "../engines/Base.js";
 import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
-
+import { convert } from "html-to-text"
 export interface MetadataEntry {
     name: string;
     content: string;
@@ -167,6 +167,11 @@ export class DataExtractor {
         if (formats.includes("rawHtml")) {
             additionalFields.rawHtml = baseContent.rawHtml;
         }
+
+        if (formats.includes("text")) {
+            additionalFields.text = convert(baseContent.rawHtml);
+        }
+
         // Handle screenshot capture for browser engines
         const page = (context as any).page;
         if (page && typeof context.saveSnapshot === 'function' && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
