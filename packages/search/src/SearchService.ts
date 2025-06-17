@@ -174,7 +174,8 @@ export class SearchService {
                         ...request,
                         uniqueKey,
                         engineName,
-                        queueName: "AnyCrawl_Search"
+                        queueName: "AnyCrawl_Search",
+                        options: {}
                     },
                     uniqueKey: randomUUID(),
                 });

@@ -294,7 +294,7 @@ export abstract class BaseEngine {
 
             try {
                 // check if waitFor is set, and it is browser engine
-                if (context.request.userData.options.waitFor) {
+                if (context.request.userData.options?.waitFor) {
                     if (context.page) {
                         log.debug(`Waiting for ${context.request.userData.options.waitFor} seconds for ${context.request.url}`);
                         await sleep(context.request.userData.options.waitFor);

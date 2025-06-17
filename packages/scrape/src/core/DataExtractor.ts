@@ -1,6 +1,6 @@
 import { log } from "@anycrawl/libs"
 import { htmlToMarkdown } from "@anycrawl/libs/html-to-markdown";
-import { HTMLTransformer, ExtractionOptions } from "./transformers/HTMLTransformer.js";
+import { HTMLTransformer, ExtractionOptions, TransformOptions } from "./transformers/HTMLTransformer.js";
 import { CrawlingContext } from "../engines/Base.js";
 import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
@@ -145,21 +145,23 @@ export class DataExtractor {
         const additionalFields: AdditionalFields = {};
 
         if (formats.includes("html") || formats.includes("markdown")) {
-            // Extract clean HTML content with optional include/exclude tags
-            const extractionOptions: ExtractionOptions = {
+            // Extract and transform HTML content with optional include/exclude tags and URL resolution
+            const transformOptions: TransformOptions = {
                 includeTags: options.includeTags,
-                excludeTags: options.excludeTags
+                excludeTags: options.excludeTags,
+                baseUrl: context.request.url,
+                transformRelativeUrls: true
             };
 
-            const cleanHtml = this.htmlTransformer.extractCleanHtml($, extractionOptions);
+            const transformedHtml = await this.htmlTransformer.transformHtml($, context.request.url, transformOptions);
 
             if (formats.includes("html")) {
-                additionalFields.html = cleanHtml;
+                additionalFields.html = transformedHtml;
             }
 
             if (formats.includes("markdown")) {
-                // Use clean HTML for markdown conversion
-                additionalFields.markdown = this.processMarkdown(cleanHtml);
+                // Use transformed HTML for markdown conversion
+                additionalFields.markdown = this.processMarkdown(transformedHtml);
             }
         }
         if (formats.includes("rawHtml")) {
@@ -177,8 +179,8 @@ export class DataExtractor {
      * Handle extraction errors
      */
     handleExtractionError(context: CrawlingContext, error: Error): never {
-        const jobId = context.request.userData["jobId"];
-        const queueName = context.request.userData["queueName"];
+        const jobId = context.request.userData["jobId"] ?? 'unknown';
+        const queueName = context.request.userData["queueName"] ?? 'unknown';
 
         log.error(
             `[${queueName}] [${jobId}] Extraction failed: ${error.message}`
