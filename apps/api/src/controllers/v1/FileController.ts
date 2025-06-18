@@ -2,7 +2,6 @@ import { Response } from "express";
 import { z } from "zod";
 import { RequestWithAuth } from "../../types/Types.js";
 import { s3 } from "@anycrawl/libs";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { Utils } from "@anycrawl/scrape/Utils";
 import { join } from 'path';
 

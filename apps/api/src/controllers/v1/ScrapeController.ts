@@ -8,27 +8,12 @@ import { CrawlerErrorType } from "@anycrawl/scrape";
 export class ScrapeController {
     public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {
         try {
-            // Validate request body against ScrapeSchema
-            const validatedData = scrapeSchema.parse(req.body);
+            // Validate request body and transform it to the job payload structure
+            const jobPayload = scrapeSchema.parse(req.body);
 
-            const jobId = await QueueManager.getInstance().addJob(`scrape-${validatedData.engine}`, {
-                url: validatedData.url,
-                engine: validatedData.engine,
-                options: {
-                    proxy: validatedData.proxy,
-                    formats: validatedData.formats,
-                    timeout: validatedData.timeout,
-                    retry: validatedData.retry,
-                    waitFor: validatedData.wait_for,
-                    includeTags: validatedData.include_tags,
-                    excludeTags: validatedData.exclude_tags,
-                    // TODO support more options
-                    // only_main_content
-                    // proxy stealth?
-                },
-            });
+            const jobId = await QueueManager.getInstance().addJob(`scrape-${jobPayload.engine}`, jobPayload);
             // waiting job done
-            const job = await QueueManager.getInstance().waitJobDone(`scrape-${validatedData.engine}`, jobId, validatedData.timeout || 30_000);
+            const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 30_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             // Check if job failed
             if (job.status === 'failed' || job.error) {
@@ -49,7 +34,7 @@ export class ScrapeController {
 
             // Add domain prefix to screenshot path if it exists
             if (jobData.screenshot) {
-                jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/file/${jobData.screenshot}`;
+                jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/public/storage/file/${jobData.screenshot}`;
             }
 
             res.json({

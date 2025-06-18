@@ -1,10 +1,10 @@
 import { log } from "@anycrawl/libs"
 import { htmlToMarkdown } from "@anycrawl/libs/html-to-markdown";
-import { HTMLTransformer, ExtractionOptions } from "./transformers/HTMLTransformer.js";
+import { HTMLTransformer, ExtractionOptions, TransformOptions } from "./transformers/HTMLTransformer.js";
 import { CrawlingContext } from "../engines/Base.js";
 import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
-
+import { convert } from "html-to-text"
 export interface MetadataEntry {
     name: string;
     content: string;
@@ -119,12 +119,13 @@ export class DataExtractor {
     assembleData(context: any, baseContent: BaseContent, metadata: MetadataEntry[], additionalFields: AdditionalFields): any {
         const jobId = context.request.userData["jobId"];
         const { url, title, rawHtml, ...baseAdditionalFields } = baseContent;
+        const formats = context.request.userData?.options?.formats;
 
         return {
             jobId: jobId,
             url,
             title,
-            ...(context.request.userData["options"]["formats"].includes("rawHtml") ? { rawHtml } : {}),
+            ...(Array.isArray(formats) && formats.includes("rawHtml") ? { rawHtml } : {}),
             metadata,
             ...baseAdditionalFields,
             ...additionalFields,
@@ -144,26 +145,33 @@ export class DataExtractor {
         const additionalFields: AdditionalFields = {};
 
         if (formats.includes("html") || formats.includes("markdown")) {
-            // Extract clean HTML content with optional include/exclude tags
-            const extractionOptions: ExtractionOptions = {
+            // Extract and transform HTML content with optional include/exclude tags and URL resolution
+            const transformOptions: TransformOptions = {
                 includeTags: options.includeTags,
-                excludeTags: options.excludeTags
+                excludeTags: options.excludeTags,
+                baseUrl: context.request.url,
+                transformRelativeUrls: true
             };
 
-            const cleanHtml = this.htmlTransformer.extractCleanHtml($, extractionOptions);
+            const transformedHtml = await this.htmlTransformer.transformHtml($, context.request.url, transformOptions);
 
             if (formats.includes("html")) {
-                additionalFields.html = cleanHtml;
+                additionalFields.html = transformedHtml;
             }
 
             if (formats.includes("markdown")) {
-                // Use clean HTML for markdown conversion
-                additionalFields.markdown = this.processMarkdown(cleanHtml);
+                // Use transformed HTML for markdown conversion
+                additionalFields.markdown = this.processMarkdown(transformedHtml);
             }
         }
         if (formats.includes("rawHtml")) {
             additionalFields.rawHtml = baseContent.rawHtml;
         }
+
+        if (formats.includes("text")) {
+            additionalFields.text = convert(baseContent.rawHtml);
+        }
+
         // Handle screenshot capture for browser engines
         const page = (context as any).page;
         if (page && typeof context.saveSnapshot === 'function' && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
@@ -176,8 +184,8 @@ export class DataExtractor {
      * Handle extraction errors
      */
     handleExtractionError(context: CrawlingContext, error: Error): never {
-        const jobId = context.request.userData["jobId"];
-        const queueName = context.request.userData["queueName"];
+        const jobId = context.request.userData["jobId"] ?? 'unknown';
+        const queueName = context.request.userData["queueName"] ?? 'unknown';
 
         log.error(
             `[${queueName}] [${jobId}] Extraction failed: ${error.message}`
