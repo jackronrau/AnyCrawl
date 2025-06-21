@@ -117,7 +117,7 @@ export class DataExtractor {
      * Assemble final data object
      */
     assembleData(context: any, baseContent: BaseContent, metadata: MetadataEntry[], additionalFields: AdditionalFields): any {
-        const jobId = context.request.userData["jobId"];
+        const jobId = context.request.userData?.jobId;
         const { url, title, rawHtml, ...baseAdditionalFields } = baseContent;
         const formats = context.request.userData?.options?.formats;
 
@@ -140,8 +140,8 @@ export class DataExtractor {
         const $ = await this.getCheerioInstance(context);
         const baseContent = await this.extractBaseContent(context, $);
         const metadata = this.extractMetadata($);
-        const formats = context.request.userData["options"]["formats"];
-        const options = context.request.userData["options"];
+        const formats = context.request.userData?.options?.formats || [];
+        const options = context.request.userData?.options || {};
         const additionalFields: AdditionalFields = {};
 
         if (formats.includes("html") || formats.includes("markdown")) {
@@ -184,8 +184,8 @@ export class DataExtractor {
      * Handle extraction errors
      */
     handleExtractionError(context: CrawlingContext, error: Error): never {
-        const jobId = context.request.userData["jobId"] ?? 'unknown';
-        const queueName = context.request.userData["queueName"] ?? 'unknown';
+        const jobId = context.request.userData?.jobId ?? 'unknown';
+        const queueName = context.request.userData?.queueName ?? 'unknown';
 
         log.error(
             `[${queueName}] [${jobId}] Extraction failed: ${error.message}`

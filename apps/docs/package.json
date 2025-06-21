@@ -3,13 +3,15 @@
     "version": "0.0.0",
     "private": true,
     "scripts": {
+        "dev": "next dev --turbo",
         "build": "next build",
         "build:with-openapi": "pnpm run generate-openapi && next build",
-        "dev": "next dev --turbo",
         "start": "next start",
-        "postinstall": "fumadocs-mdx",
+        "clean": "rm -rf .next",
+        "typecheck": "tsc --noEmit",
         "generate-openapi": "tsx scripts/generate-openapi.ts",
-        "generate-docs": "node scripts/generate-docs.mjs"
+        "generate-docs": "node scripts/generate-docs.mjs",
+        "postinstall": "fumadocs-mdx"
     },
     "dependencies": {
         "api": "workspace:*",

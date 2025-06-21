@@ -5,11 +5,13 @@
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "watch": "tsc --watch",
+        "dev": "tsc --watch",
         "build": "tsc",
-        "test": "NODE_OPTIONS='--experimental-vm-modules' jest --detectOpenHandles --forceExit",
-        "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch --detectOpenHandles",
-        "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage --detectOpenHandles --forceExit"
+        "clean": "rm -rf dist",
+        "test": "jest --detectOpenHandles --forceExit",
+        "test:watch": "jest --watch --detectOpenHandles",
+        "test:coverage": "jest --coverage --detectOpenHandles --forceExit",
+        "typecheck": "tsc --noEmit"
     },
     "exports": {
         ".": {
