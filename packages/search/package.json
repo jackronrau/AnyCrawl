@@ -4,9 +4,13 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "drizzle": "dotenv-run -r ../.. ",
-        "watch": "tsc --watch",
-        "build": "tsc"
+        "dev": "dotenv-run -r ../.. -- tsc --watch",
+        "build": "dotenv-run -r ../.. -- tsc",
+        "clean": "rm -rf dist",
+        "typecheck": "tsc --noEmit",
+        "test": "dotenv-run -r ../.. -- jest --detectOpenHandles --forceExit",
+        "test:watch": "dotenv-run -r ../.. -- jest --watch --detectOpenHandles",
+        "test:coverage": "dotenv-run -r ../.. -- jest --coverage --detectOpenHandles --forceExit"
     },
     "exports": {
         ".": {

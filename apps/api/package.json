@@ -4,16 +4,17 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "drizzle": "dotenv-run -r ../.. ",
+        "dev": "dotenv-run -r ../.. -- tsx watch ./src/index.ts",
+        "build": "dotenv-run -r ../.. -- tsc",
+        "start": "dotenv-run -r ../.. -- node ./dist/index.js",
         "clean": "rm -rf dist",
-        "dev": "NODE_ENV=development dotenv-run -r ../.. -- tsx watch ./src/index.ts",
-        "build": "NODE_ENV=production pnpm run drizzle -- pnpm run clean && tsc",
-        "start": "NODE_ENV=production node ./dist/index.js",
-        "db:generate": "pnpm run drizzle -- drizzle-kit generate",
-        "db:migrate": "pnpm run drizzle -- drizzle-kit migrate",
-        "test": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --detectOpenHandles --forceExit",
-        "test:watch": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --watch --detectOpenHandles",
-        "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' pnpm run drizzle -- jest --coverage --detectOpenHandles --forceExit"
+        "test": "dotenv-run -r ../.. -- jest --detectOpenHandles --forceExit",
+        "test:watch": "dotenv-run -r ../.. -- jest --watch --detectOpenHandles",
+        "test:coverage": "dotenv-run -r ../.. -- jest --coverage --detectOpenHandles --forceExit",
+        "typecheck": "tsc --noEmit",
+        "db:generate": "dotenv-run -r ../.. -- drizzle-kit generate",
+        "db:migrate": "dotenv-run -r ../.. -- drizzle-kit migrate",
+        "db:studio": "dotenv-run -r ../.. -- drizzle-kit studio"
     },
     "dependencies": {
         "@anycrawl/libs": "workspace:*",
