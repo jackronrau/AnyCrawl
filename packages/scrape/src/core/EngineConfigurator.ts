@@ -1,4 +1,5 @@
 import { AD_DOMAINS, log } from "@anycrawl/libs";
+import { BrowserName } from "crawlee";
 export enum ConfigurableEngineType {
     CHEERIO = 'cheerio',
     PLAYWRIGHT = 'playwright',
@@ -106,16 +107,29 @@ export class EngineConfigurator {
 
     private static configurePuppeteer(options: any): void {
         // Puppeteer-specific configurations can be added here
-        // For example: browserPoolOptions, specific launch options, etc.
+        options.browserPoolOptions = {
+            useFingerprints: true,
+            fingerprintOptions: {
+                fingerprintGeneratorOptions: {
+                    browsers: [{ name: BrowserName.chrome, minVersion: 120 }],
+                },
+            },
+        };
     }
 
     private static configurePlaywright(options: any): void {
         // Playwright-specific configurations can be added here
-        // For example: browser type, context options, etc.
+        options.browserPoolOptions = {
+            useFingerprints: true,
+            fingerprintOptions: {
+                fingerprintGeneratorOptions: {
+                    browsers: [{ name: BrowserName.chrome, minVersion: 120 }],
+                },
+            },
+        };
     }
 
     private static configureCheerio(options: any): void {
         // Cheerio-specific configurations can be added here
-        // For example: parsing options, etc.
     }
 } 

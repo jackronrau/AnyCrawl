@@ -343,7 +343,13 @@ export abstract class BaseEngine {
                 await customFailedRequestHandler(context, error);
                 return;
             }
-
+            if (context.response?.status() === 403) {
+                await this.handleFailedRequest(context, {
+                    statusCode: 403,
+                    statusMessage: 'Forbidden'
+                });
+                return;
+            }
             // Log failure
             const { queueName, jobId } = context.request.userData;
             log.error(`[${queueName}] [${jobId}] Request ${context.request.url} failed with error: ${error.message}`);
