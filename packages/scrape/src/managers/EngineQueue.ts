@@ -24,8 +24,10 @@ export const AVAILABLE_ENGINES = (() => {
 export type EngineType = (typeof AVAILABLE_ENGINES)[number];
 
 log.info(`ignore ssl errors: ${process.env.ANYCRAWL_IGNORE_SSL_ERROR === "true" ? true : false}`);
-log.info(`enable proxy: ${process.env.ANYCRAWL_PROXY_URL ? true : false}, ${process.env.ANYCRAWL_PROXY_URL}`);
-
+log.info(`enable proxy: ${(process.env.ANYCRAWL_PROXY_URL) ? true : false}, ${process.env.ANYCRAWL_PROXY_URL}`);
+if (process.env.ANYCRAWL_PROXY_CONFIG) {
+    log.info(`proxy config: ${process.env.ANYCRAWL_PROXY_CONFIG}`);
+}
 // Queue manager class to handle all engine queues
 export class EngineQueueManager {
     private static instance: EngineQueueManager;
