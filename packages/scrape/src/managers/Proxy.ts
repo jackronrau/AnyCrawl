@@ -1,4 +1,4 @@
-import { Request } from "crawlee";
+import { Request, ProxyConfiguration as CrawleeProxyConfiguration } from "crawlee";
 import { log } from "@anycrawl/libs/log";
 import type { Dictionary } from '@crawlee/types';
 import { readFileSync } from 'fs';
@@ -118,62 +118,6 @@ interface TieredProxyOptions {
 }
 
 /**
- * Internal class for tracking the proxy tier history for a specific domain.
- *
- * Predicts the best proxy tier for the next request based on the error history for different proxy tiers.
- */
-class ProxyTierTracker {
-    private histogram: number[];
-    private currentTier: number;
-
-    constructor(tieredProxyUrls: (string | null)[][]) {
-        this.histogram = tieredProxyUrls.map(() => 0);
-        this.currentTier = 0;
-    }
-
-    /**
-     * Processes a single step of the algorithm and updates the current tier prediction based on the error history.
-     */
-    private processStep(): void {
-        this.histogram.forEach((x, i) => {
-            if (this.currentTier === i) return;
-            if (x > 0 && this.histogram[i] !== undefined) this.histogram[i]--;
-        });
-
-        const left = this.currentTier > 0 ? (this.histogram[this.currentTier - 1] ?? 0) : Infinity;
-        const right = this.currentTier < this.histogram.length - 1 ? (this.histogram[this.currentTier + 1] ?? 0) : Infinity;
-        const current = this.histogram[this.currentTier] ?? 0;
-
-        if (current > Math.min(left, right)) {
-            this.currentTier = left <= right ? this.currentTier - 1 : this.currentTier + 1;
-        } else if (current === left) {
-            this.currentTier--;
-        }
-    }
-
-    /**
-     * Increases the error score for the given proxy tier. This raises the chance of picking a different proxy tier for the subsequent requests.
-     *
-     * The error score is increased by 10 for the given tier. This means that this tier will be disadvantaged for the next 10 requests (every new request prediction decreases the error score by 1).
-     * @param tier The proxy tier to mark as problematic.
-     */
-    addError(tier: number) {
-        if (this.histogram[tier] !== undefined) {
-            this.histogram[tier] += 10;
-        }
-    }
-
-    /**
-     * Returns the best proxy tier for the next request based on the error history for different proxy tiers.
-     * @returns The proxy tier prediction
-     */
-    predictTier() {
-        this.processStep();
-        return this.currentTier;
-    }
-}
-
-/**
  * Configures connection to a proxy server with the provided options. Proxy servers are used to prevent target websites from blocking
  * your crawlers based on IP address rate limits or blacklists. Setting proxy configuration in your crawlers automatically configures
  * them to use the selected proxies for all connections. You can get information about the currently used proxy by inspecting
@@ -201,15 +145,7 @@ class ProxyTierTracker {
  * ```
  * @category Scaling
  */
-export class ProxyConfiguration {
-    isManInTheMiddle = false;
-    protected nextCustomUrlIndex = 0;
-    protected proxyUrls?: string[];
-    protected tieredProxyUrls?: (string | null)[][];
-    protected usedProxyUrls = new Map<string, string>();
-    protected newUrlFunction?: ProxyConfigurationFunction;
-    protected log = log.child({ prefix: 'ProxyConfiguration' });
-    protected domainTiers = new Map<string, ProxyTierTracker>();
+export class ProxyConfiguration extends CrawleeProxyConfiguration {
 
     /**
      * Creates a {@apilink ProxyConfiguration} instance based on the provided options. Proxy servers are used to prevent target websites from
@@ -232,6 +168,18 @@ export class ProxyConfiguration {
      * ```
      */
     constructor(options: ProxyConfigurationOptions = {}) {
+        const parentOptions = { ...options };
+
+        // 如果同时存在多个配置选项，临时移除它们以绕过父类验证
+        const hasMultipleOptions = [options.proxyUrls, options.newUrlFunction, options.tieredProxyUrls].filter(x => x).length > 1;
+
+        if (hasMultipleOptions) {
+            // 只保留 newUrlFunction，移除其他选项来通过父类验证
+            delete parentOptions.proxyUrls;
+            delete parentOptions.tieredProxyUrls;
+        }
+
+        super(parentOptions);
         const { validateRequired, ...rest } = options as Dictionary;
 
         // Basic validation
@@ -360,44 +308,6 @@ export class ProxyConfiguration {
     }
 
     /**
-     * Given a `Request` object, this function returns the tier of the proxy that should be used for the request.
-     *
-     * This returns `null` if `tieredProxyUrls` option is not set.
-     */
-    protected predictProxyTier(request: Request): number | null {
-        if (!this.tieredProxyUrls) return null;
-
-        const domain = new URL(request.url).hostname;
-        if (!this.domainTiers.has(domain)) {
-            this.domainTiers.set(domain, new ProxyTierTracker(this.tieredProxyUrls));
-        }
-
-        request.userData.__crawlee ??= {};
-
-        const tracker = this.domainTiers.get(domain)!;
-
-        if (typeof request.userData.__crawlee.lastProxyTier === 'number') {
-            tracker.addError(request.userData.__crawlee.lastProxyTier);
-        }
-
-        const tierPrediction = tracker.predictTier();
-
-        if (
-            typeof request.userData.__crawlee.lastProxyTier === 'number' &&
-            request.userData.__crawlee.lastProxyTier !== tierPrediction
-        ) {
-            log.debug(
-                `Changing proxy tier for domain "${domain}" from ${request.userData.__crawlee.lastProxyTier} to ${tierPrediction}.`,
-            );
-        }
-
-        request.userData.__crawlee.lastProxyTier = tierPrediction;
-        request.userData.__crawlee.forefront = true;
-
-        return tierPrediction;
-    }
-
-    /**
      * Returns a new proxy URL based on provided configuration options and the `sessionId` parameter.
      * @param [sessionId]
      *  Represents the identifier of user {@apilink Session} that can be managed by the {@apilink SessionPool} or
@@ -434,63 +344,7 @@ export class ProxyConfiguration {
         // If all methods fail, return null
         return undefined;
     }
-
-    /**
-     * Handles custom url rotation with session
-     */
-    protected _handleCustomUrl(sessionId?: string): string {
-        if (!this.proxyUrls || this.proxyUrls.length === 0) {
-            throw new Error('No proxy URLs available');
-        }
-
-        let customUrlToUse: string;
-
-        if (!sessionId) {
-            const url = this.proxyUrls[this.nextCustomUrlIndex++ % this.proxyUrls.length];
-            if (!url) throw new Error('Invalid proxy URL');
-            return url;
-        }
-
-        if (this.usedProxyUrls.has(sessionId)) {
-            customUrlToUse = this.usedProxyUrls.get(sessionId)!;
-        } else {
-            const url = this.proxyUrls[this.nextCustomUrlIndex++ % this.proxyUrls.length];
-            if (!url) throw new Error('Invalid proxy URL');
-            customUrlToUse = url;
-            this.usedProxyUrls.set(sessionId, customUrlToUse);
-        }
-
-        return customUrlToUse;
-    }
-
-    /**
-     * Calls the custom newUrlFunction and checks format of its return value
-     */
-    protected async _callNewUrlFunction(sessionId?: string, options?: { request?: Request }) {
-        const proxyUrl = await this.newUrlFunction!(sessionId!, options);
-        try {
-            if (proxyUrl) {
-                new URL(proxyUrl); // eslint-disable-line no-new
-            }
-            return proxyUrl;
-        } catch (err) {
-            throw new Error(
-                `The provided newUrlFunction did not return a valid URL.\nCause: ${(err as Error).message}`,
-            );
-        }
-    }
-
-    protected _throwCannotCombineCustomMethods(): never {
-        throw new Error(
-            'Cannot combine custom proxies "options.proxyUrls" with custom generating function "options.newUrlFunction".',
-        );
-    }
-
-    protected _throwNoOptionsProvided(): never {
-        throw new Error('One of "options.proxyUrls" or "options.newUrlFunction" needs to be provided.');
-    }
 }
-
 interface ProxyRule {
     domain?: string;   // Domain pattern using wildcards, e.g., "*.example.com"
     url?: string;      // Exact URL match
@@ -619,7 +473,10 @@ function findProxyForUrl(requestUrl: string): string | null {
         log.info(`Invalid URL provided for proxy matching: ${requestUrl}`);
         return null;
     }
-
+    if (!Array.isArray(proxyConfig.rules)) {
+        log.warning('Proxy config rules is not an array, skipping proxy matching');
+        return null;
+    }
     for (const rule of proxyConfig.rules) {
         // Priority 1: Check exact URL match first (highest priority)
         if (rule.url && rule.url === requestUrl) {
