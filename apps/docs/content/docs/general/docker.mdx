@@ -1,8 +1,23 @@
 ---
 title: Docker deployment
-description: Using docker to run AnyCrawl
+description: Using docker to deploy AnyCrawl
 icon: Hammer
 ---
+
+# Docker with pre-build images
+
+AnyCrawl provides pre-built Docker images through GitHub Container Registry. You can quickly deploy AnyCrawl without building from source.
+
+## Available Pre-built Images
+
+The following images are available from [GitHub Container Registry](https://github.com/any4ai/AnyCrawl/packages):
+
+- **anycrawl-api**: Main API service
+- **anycrawl-scrape-cheerio**: Cheerio scraping engine
+- **anycrawl-scrape-playwright**: Playwright scraping engine
+- **anycrawl-scrape-puppeteer**: Puppeteer scraping engine
+
+# Docker build
 
 ## Prerequisites
 
@@ -195,9 +210,6 @@ docker compose restart api
 
 # View service logs
 docker compose logs -f api
-
-# Enter container
-docker compose exec api bash
 ```
 
 ### Scaling Services

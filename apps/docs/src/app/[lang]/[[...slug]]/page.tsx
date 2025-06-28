@@ -3,11 +3,12 @@ import { DocsPage, DocsBody, DocsDescription, DocsTitle } from "fumadocs-ui/page
 import { notFound, redirect } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { getMDXComponents } from "@/mdx-components";
+import { baseUrl } from "@/lib/utils";
 
 export default async function Page(props: { params: Promise<{ lang: string; slug?: string[] }> }) {
     const params = await props.params;
 
-    // 如果没有 slug，重定向到首页
+    // if there is no slug, redirect to the homepage
     if (!params.slug || params.slug.length === 0) {
         redirect(`/${params.lang}/general`);
     }
@@ -45,7 +46,14 @@ export async function generateMetadata(props: {
     if (!page) notFound();
 
     return {
-        title: page.data.title,
-        description: page.data.description,
+        title: `${page.data.title} - AnyCrawl Docs`,
+        description: `${page.data.description}. Turning web into AI with AnyCrawl.`,
+        openGraph: {
+            title: page.data.title,
+            description: page.data.description,
+            type: "article",
+            url: `${baseUrl}/${params.lang}${params.slug ? `/${params.slug.join("/")}` : ""}`,
+            siteName: "AnyCrawl Docs",
+        },
     };
 }
