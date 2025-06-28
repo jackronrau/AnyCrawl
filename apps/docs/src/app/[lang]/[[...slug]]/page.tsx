@@ -8,7 +8,7 @@ import { baseUrl } from "@/lib/utils";
 export default async function Page(props: { params: Promise<{ lang: string; slug?: string[] }> }) {
     const params = await props.params;
 
-    // 如果没有 slug，重定向到首页
+    // if there is no slug, redirect to the homepage
     if (!params.slug || params.slug.length === 0) {
         redirect(`/${params.lang}/general`);
     }
