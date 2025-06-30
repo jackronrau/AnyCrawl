@@ -55,7 +55,8 @@ storage/
 *.db
 *.sqlite
 *.sqlite3
-proxy-config.json
+proxy.config.json
+ai.config.json
 
 # Logs
 logs
