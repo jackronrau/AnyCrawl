@@ -8,7 +8,10 @@ import { createOpenAPI, attachFile } from 'fumadocs-openapi/server';
 export const source = loader({
     baseUrl: "/",
     icon(icon) {
-        if (icon && icon in icons) return createElement(icons[icon as keyof typeof icons]);
+        if (icon && icon in icons) {
+            const IconComponent = icons[icon as keyof typeof icons];
+            return createElement(IconComponent as React.ComponentType);
+        }
     },
     source: docs.toFumadocsSource(),
     i18n,
