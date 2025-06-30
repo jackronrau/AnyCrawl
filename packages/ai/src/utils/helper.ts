@@ -108,8 +108,9 @@ const getEnabledModelIdByModelKey = (modelKey: string): string => {
                 }
             }
         }
+        throw new Error(`Model ${modelKey} is not found`);
     }
-    throw new Error(`Model ${modelKey} is not found`);
+    return modelKey;
 }
 
 /**
