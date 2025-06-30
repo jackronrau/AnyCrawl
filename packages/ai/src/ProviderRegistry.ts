@@ -1,0 +1,106 @@
+import { createProviderRegistry, LanguageModel } from "ai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { aiConfig, getDefaultLLModelId, getEnabledModelIdByModelKey } from "./utils/helper.js";
+
+type ProviderRegistry = ReturnType<typeof createProviderRegistry>;
+
+const openrouter = createOpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY,
+});
+const separator = '/';
+let providerRegistry: ProviderRegistry;
+
+
+if (aiConfig) {
+    // load from config
+    const providers = aiConfig.providers;
+    const providerInstances: Record<string, any> = {};
+    Object.entries(providers).forEach(([key, provider]) => {
+        const typedProvider = provider as {
+            enabled: boolean;
+            apiKey?: string;
+            apiKeyEnv?: string;
+            baseURL?: string;
+            baseURLEnv?: string;
+        };
+        if (!typedProvider.enabled) {
+            return;
+        }
+
+        const apiKey = typedProvider.apiKey ?? (typedProvider.apiKeyEnv ? process.env[typedProvider.apiKeyEnv] : null);
+        const baseURL = typedProvider.baseURL ?? (typedProvider.baseURLEnv ? process.env[typedProvider.baseURLEnv] : null);
+
+        if (apiKey && baseURL) {
+            if (key === 'openai') {
+                providerInstances[key] = createOpenAI({
+                    apiKey,
+                    baseURL,
+                });
+            } else if (key === 'openrouter') {
+                providerInstances[key] = createOpenAICompatible({
+                    name: key,
+                    baseURL,
+                    apiKey,
+                });
+            } else {
+                // For any other provider, use openaiCompatible
+                providerInstances[key] = createOpenAICompatible({
+                    name: key,
+                    baseURL,
+                    apiKey,
+                });
+            }
+        }
+    });
+
+    providerRegistry = createProviderRegistry(providerInstances, {
+        separator,
+    });
+
+} else {
+    // load from env
+    const providerInstances: Record<string, any> = {};
+    if (process.env.OPENAI_API_KEY) {
+        providerInstances['openai'] = openai;
+    }
+    if (process.env.OPENROUTER_API_KEY) {
+        providerInstances['openrouter'] = createOpenAICompatible({
+            name: 'openrouter',
+            baseURL: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+            apiKey: process.env.OPENROUTER_API_KEY,
+        });
+    }
+    if (process.env.CUSTOM_API_KEY && process.env.CUSTOM_BASE_URL) {
+        providerInstances['custom'] = createOpenAICompatible({
+            name: 'custom',
+            baseURL: process.env.CUSTOM_BASE_URL,
+            apiKey: process.env.CUSTOM_API_KEY,
+        });
+    }
+    providerRegistry = createProviderRegistry(providerInstances, {
+        separator,
+    });
+}
+const getLLM = (modelId: string): LanguageModel => {
+    if (providerRegistry) {
+        return providerRegistry.languageModel(modelId as never);
+    }
+    throw new Error('ProviderRegistry is not initialized');
+}
+
+const getDefaultLLM = (): LanguageModel => {
+    return getLLM(getDefaultLLModelId());
+}
+
+const getLLMByModel = (modelKey: string): LanguageModel => {
+    return getLLM(getEnabledModelIdByModelKey(modelKey));
+}
+
+export {
+    providerRegistry,
+    getLLM,
+    getDefaultLLM,
+    getLLMByModel
+};
