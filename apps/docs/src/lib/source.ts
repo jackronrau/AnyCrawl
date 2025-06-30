@@ -10,8 +10,9 @@ export const source = loader({
     icon(icon) {
         if (icon && icon in icons) {
             const IconComponent = icons[icon as keyof typeof icons];
-            return createElement(IconComponent as React.ComponentType);
+            return createElement(IconComponent);
         }
+        return undefined;
     },
     source: docs.toFumadocsSource(),
     i18n,
