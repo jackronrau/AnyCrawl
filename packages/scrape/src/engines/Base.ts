@@ -147,14 +147,50 @@ export abstract class BaseEngine {
             };
         }
 
-        // Handle both function-style and property-style status access
-        const statusCode = typeof response.status === 'function'
-            ? response.status()
-            : (response.statusCode ?? HttpStatusCategory.NO_RESPONSE);
+        let statusCode: number;
+        let statusMessage: string;
 
-        const statusMessage = typeof response.statusText === 'function'
-            ? response.statusText()
-            : (response.statusMessage ?? `HTTP ${statusCode}`);
+        try {
+            // Handle both function-style and property-style status access
+            if (typeof response.status === 'function') {
+                // Playwright/Puppeteer style
+                statusCode = response.status();
+                if (typeof response.statusText === 'function') {
+                    statusMessage = response.statusText();
+                } else {
+                    statusMessage = (response.statusText && typeof response.statusText === 'string')
+                        ? response.statusText
+                        : `HTTP ${statusCode}`;
+                }
+            } else {
+                // Cheerio/Got style - handle multiple possible property names
+                statusCode = response.statusCode ?? response.status ?? HttpStatusCategory.NO_RESPONSE;
+
+                if (response.statusMessage && typeof response.statusMessage === 'string') {
+                    statusMessage = response.statusMessage;
+                } else if (typeof response.statusText === 'function') {
+                    statusMessage = response.statusText();
+                } else if (response.statusText && typeof response.statusText === 'string') {
+                    statusMessage = response.statusText;
+                } else {
+                    statusMessage = ``;
+                }
+            }
+
+            // Validate status code
+            if (typeof statusCode !== 'number' || statusCode < 0) {
+                statusCode = HttpStatusCategory.NO_RESPONSE;
+                statusMessage = 'Invalid status code received';
+            }
+
+        } catch (error) {
+            // If we can't extract status info, log the error and return default
+            log.debug(`Failed to extract response status: ${error}`);
+            return {
+                statusCode: HttpStatusCategory.NO_RESPONSE,
+                statusMessage: 'Failed to extract response status'
+            };
+        }
 
         return { statusCode, statusMessage };
     }
@@ -172,6 +208,9 @@ export abstract class BaseEngine {
             metadata?: Record<string, any>;
         }
     ): CrawlerError {
+        if (process.env.NODE_ENV === 'production') {
+            delete details?.stack;
+        }
         return {
             type,
             message,
@@ -187,22 +226,44 @@ export abstract class BaseEngine {
     protected async handleFailedRequest(
         context: CrawlingContext,
         status: ResponseStatus,
-        data?: any
+        data?: any,
+        tryExtractData = false
     ): Promise<void> {
-        const { jobId, queueName } = context.request.userData;
-        const error = this.createCrawlerError(
-            CrawlerErrorType.HTTP_ERROR,
-            `Page is not available: ${status.statusCode} ${status.statusMessage}`,
-            context.request.url,
-            {
-                code: status.statusCode,
-                metadata: {
+        if (tryExtractData) {
+            let extractedData = {};
+            // try to extract data
+            try {
+                extractedData = await this.dataExtractor.extractData(context);
+                data = {
                     ...data,
-                    statusCode: status.statusCode,
-                    statusMessage: status.statusMessage
+                    ...extractedData
                 }
+            } catch (error) {
             }
-        );
+        }
+        const { jobId, queueName } = context.request.userData;
+        let error = null;
+        if (status.statusCode === 0) {
+            error = this.createCrawlerError(
+                CrawlerErrorType.HTTP_ERROR,
+                `Page is not available`,
+                context.request.url,
+            );
+        } else {
+            error = this.createCrawlerError(
+                CrawlerErrorType.HTTP_ERROR,
+                `Page is not available: ${status.statusCode} ${status.statusMessage}`,
+                context.request.url,
+                {
+                    code: status.statusCode,
+                    metadata: {
+                        ...data,
+                        statusCode: status.statusCode,
+                        statusMessage: status.statusMessage
+                    }
+                }
+            );
+        }
 
         if (jobId) {
             await this.jobManager.markFailed(
@@ -281,7 +342,7 @@ export abstract class BaseEngine {
             if (context.response) {
                 const status = this.extractResponseStatus(context.response as CrawlerResponse);
                 if (!this.isSuccessfulResponse(status)) {
-                    await this.handleFailedRequest(context, status);
+                    await this.handleFailedRequest(context, status, null, true);
                     return true;
                 }
             }
@@ -291,7 +352,7 @@ export abstract class BaseEngine {
         const requestHandler = async (context: CrawlingContext) => {
             // check if http status code is 400 or higher
             const isHttpError = await checkHttpError(context);
-
+            let data = null;
             try {
                 // check if waitFor is set, and it is browser engine
                 if (context.request.userData.options?.waitFor) {
@@ -310,21 +371,8 @@ export abstract class BaseEngine {
                 }
 
                 // Extract data using DataExtractor
-                const data = await this.dataExtractor.extractData(context);
-                const { queueName, jobId } = context.request.userData;
+                data = await this.dataExtractor.extractData(context);
 
-                // Log success
-                log.info(`[${queueName}] [${jobId}] Pushing data for ${data.url}`);
-
-                // Update job status if jobId exists
-                if (jobId) {
-                    if (isHttpError) {
-                        const status = this.extractResponseStatus(context.response as CrawlerResponse);
-                        await this.handleFailedRequest(context, status, data);
-                    } else {
-                        await this.jobManager.markCompleted(jobId, queueName, data);
-                    }
-                }
             } catch (error) {
                 const { queueName, jobId } = context.request.userData;
                 if (jobId) {
@@ -335,6 +383,20 @@ export abstract class BaseEngine {
                 }
                 this.dataExtractor.handleExtractionError(context, error as Error);
             }
+            const { queueName, jobId } = context.request.userData;
+
+            // Log success
+            log.info(`[${queueName}] [${jobId}] Pushing data for ${data.url}`);
+
+            // Update job status if jobId exists
+            if (jobId) {
+                if (isHttpError) {
+                    const status = this.extractResponseStatus(context.response as CrawlerResponse);
+                    await this.handleFailedRequest(context, status, data);
+                } else {
+                    await this.jobManager.markCompleted(jobId, queueName, data);
+                }
+            }
         };
 
         const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
@@ -343,21 +405,10 @@ export abstract class BaseEngine {
                 await customFailedRequestHandler(context, error);
                 return;
             }
-            if (context.response?.status() === 403) {
-                await this.handleFailedRequest(context, {
-                    statusCode: 403,
-                    statusMessage: 'Forbidden'
-                });
-                return;
-            }
-            // Log failure
-            const { queueName, jobId } = context.request.userData;
-            log.error(`[${queueName}] [${jobId}] Request ${context.request.url} failed with error: ${error.message}`);
 
-            // Update job status if jobId exists
-            if (jobId) {
-                await this.jobManager.markFailed(jobId, queueName, error.message);
-            }
+            const status = this.extractResponseStatus(context.response as CrawlerResponse);
+
+            await this.handleFailedRequest(context, status, error, true);
         };
 
         return { requestHandler, failedRequestHandler };

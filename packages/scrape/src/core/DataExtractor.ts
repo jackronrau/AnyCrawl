@@ -5,6 +5,8 @@ import { CrawlingContext } from "../engines/Base.js";
 import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
 import { convert } from "html-to-text"
+import * as cheerio from "cheerio";
+
 export interface MetadataEntry {
     name: string;
     content: string;
@@ -44,18 +46,57 @@ export class DataExtractor {
     }
 
     /**
+     * Convert text/HTML string to cheerio instance
+     * @param text - The HTML or text string to convert
+     * @param options - Optional cheerio load options
+     * @returns Cheerio instance
+     */
+    convertTextToCheerio(text: string, options?: any): any {
+        try {
+            return cheerio.load(text, options);
+        } catch (error) {
+            log.error(`Failed to convert text to cheerio: ${error}`);
+            throw new Error(`Failed to convert text to cheerio: ${error}`);
+        }
+    }
+
+    /**
      * Get cheerio instance using unified approach
      */
     async getCheerioInstance(context: any): Promise<any> {
-        if (context.parseWithCheerio) {
-            // Playwright and Puppeteer have parseWithCheerio method
-            return await context.parseWithCheerio();
-        } else if (context.$) {
-            // CheerioEngine uses existing $ object
-            return context.$;
-        } else {
-            throw new Error("No cheerio instance available in context");
+        let $ = null;
+        try {
+            if (context.parseWithCheerio) {
+                // Playwright and Puppeteer have parseWithCheerio method
+                $ = await context.parseWithCheerio();
+            } else if (context.$ && context.$ !== undefined) {
+                // CheerioEngine uses existing $ object
+                $ = context.$;
+            }
+        } catch (error) {
+            log.debug(`Failed to parse with cheerio: ${error}`);
         }
+
+        if ($ === null || $ === undefined) {
+            try {
+                if (context.page && context.page.content && typeof context.page.content === "function") {
+                    // Check if page is closed before trying to get content
+                    if ((context.page as any).isClosed && (context.page as any).isClosed()) {
+                        throw new Error("Page is closed");
+                    }
+                    const html = await context.page.content();
+                    return this.convertTextToCheerio(html);
+                } else if (context.body) {
+                    return this.convertTextToCheerio(context.body.toString("utf-8"));
+                } else {
+                    return this.convertTextToCheerio("<!DOCTYPE html><html><head><title></title></head><body></body></html>");
+                }
+            } catch (error) {
+                log.debug(`Failed to get page content: ${error}`);
+                return this.convertTextToCheerio("<!DOCTYPE html><html><head><title></title></head><body></body></html>");
+            }
+        }
+        return $;
     }
 
     /**
@@ -63,17 +104,32 @@ export class DataExtractor {
      */
     async extractBaseContent(context: any, $: any): Promise<BaseContent> {
         let rawHtml = "";
-        if (context.body) {
-            // body (Cheerio engine) is available
-            rawHtml = context.body.toString("utf-8");
-        } else if (context.page.content) {
-            // page.content (browser engines) is available
-            rawHtml = await context.page.content();
-        } else {
-            // Fallback: try to get HTML from cheerio if available (Cheerio engine)
-            rawHtml = $('html').length > 0 ? $('html').parent().html() || $.html() : '';
+        try {
+            if (context.body) {
+                // body (Cheerio engine) is available
+                rawHtml = context.body.toString("utf-8");
+            } else if (context.page && context.page.content) {
+                // page.content (browser engines) is available
+                // Check if page is closed before trying to get content
+                if ((context.page as any).isClosed && (context.page as any).isClosed()) {
+                    throw new Error("Page is closed");
+                }
+                rawHtml = await context.page.content();
+            } else if ($ && $ !== undefined) {
+                // Fallback: try to get HTML from cheerio if available (Cheerio engine)
+                rawHtml = $('html').length > 0 ? $('html').parent().html() || $.html() : '';
+            }
+        } catch (error) {
+            log.debug(`Failed to extract raw HTML: ${error}`);
+            rawHtml = "";
         }
-        const title = $('title').text().trim();
+
+        let title = "";
+        try {
+            title = $('title').text().trim();
+        } catch (error) {
+            title = "";
+        }
 
         return {
             url: context.request.url,
@@ -88,20 +144,24 @@ export class DataExtractor {
     extractMetadata($: any): MetadataEntry[] {
         const metadata: MetadataEntry[] = [];
 
-        $("meta").each((_: number, element: any) => {
-            const $el = $(element);
-            const name = $el.attr("name");
-            const property = $el.attr("property");
-            const content = $el.attr("content");
+        try {
+            $("meta").each((_: number, element: any) => {
+                const $el = $(element);
+                const name = $el.attr("name");
+                const property = $el.attr("property");
+                const content = $el.attr("content");
 
-            if ((name || property) && content) {
-                metadata.push({
-                    name: name || property,
-                    content: content.trim(),
-                    property: property || undefined,
-                });
-            }
-        });
+                if ((name || property) && content) {
+                    metadata.push({
+                        name: name || property,
+                        content: content.trim(),
+                        property: property || undefined,
+                    });
+                }
+            });
+        } catch (error) {
+            log.error(`Failed to extract metadata: ${error}`);
+        }
 
         return metadata;
     }
