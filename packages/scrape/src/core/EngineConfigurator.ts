@@ -114,14 +114,14 @@ export class EngineConfigurator {
                                 }
                             });
                         } catch (err) {
-                            log.debug('Failed to cancel auth:', err);
+                            log.debug(`Failed to cancel auth: ${err}`);
                             // Try to continue the request anyway
                             try {
                                 await client.send('Fetch.continueRequest', {
                                     requestId: event.requestId
                                 });
                             } catch (e) {
-                                log.debug('Failed to continue request:', e);
+                                log.debug(`Failed to continue request: ${e}`);
                             }
                         }
                     });
@@ -134,13 +134,13 @@ export class EngineConfigurator {
                                 requestId: event.requestId
                             });
                         } catch (e) {
-                            log.debug('Failed to continue paused request:', e);
+                            log.debug(`Failed to continue paused request: ${e}`);
                         }
                     });
 
                     log.debug('CDP auth handling enabled for Puppeteer');
                 } catch (e) {
-                    log.debug('Failed to set up auth handling:', e);
+                    log.debug(`Failed to set up auth handling: ${e}`);
                 }
             } else if (engineType === ConfigurableEngineType.PLAYWRIGHT) {
                 // For Playwright, we might need different handling
