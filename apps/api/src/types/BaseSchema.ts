@@ -20,7 +20,7 @@ export const baseSchema = z.object({
     /**
      * The formats to be used
      */
-    formats: z.array(z.enum(["markdown", "html", "text", "screenshot", "screenshot@fullPage", "rawHtml"])).default(["markdown"]),
+    formats: z.array(z.enum(["markdown", "html", "text", "screenshot", "screenshot@fullPage", "rawHtml", "json"])).default(["markdown"]),
 
     /**
      * The timeout to be used

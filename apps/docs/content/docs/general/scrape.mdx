@@ -27,11 +27,17 @@ POST https://api.anycrawl.dev/v1/scrape
 
 ## Request Parameters
 
-| Parameter | Type         | Required | Default   | Description                                                               |
-| --------- | ------------ | -------- | --------- | ------------------------------------------------------------------------- |
-| `url`     | string       | Yes      | -         | URL to scrape, must be a valid HTTP/HTTPS address                         |
-| `engine`  | enum         | No       | `cheerio` | Scraping engine type, options: `cheerio`, `playwright`, `puppeteer`       |
-| `proxy`   | string (URI) | No       | -         | Proxy server address, format: `http://proxy:port` or `https://proxy:port` |
+| Parameter      | Type         | Required | Default        | Description                                                                                                 |
+| -------------- | ------------ | -------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `url`          | string       | Yes      | -              | URL to scrape, must be a valid HTTP/HTTPS address                                                           |
+| `engine`       | enum         | No       | `cheerio`      | Scraping engine type, options: `cheerio`, `playwright`, `puppeteer`                                         |
+| `formats`      | array        | No       | `["markdown"]` | Output formats, options: `markdown`, `html`, `text`, `screenshot`, `screenshot@fullPage`, `rawHtml`, `json` |
+| `timeout`      | number       | No       | `30000`        | Timeout in milliseconds, default: 30000                                                                     |
+| `wait_for`     | number       | No       | -              | Wait for the page to load                                                                                   |
+| `include_tags` | array        | No       | -              | Include tags, like: `h1`                                                                                    |
+| `exclude_tags` | array        | No       | -              | Exclude tags, like: `h1`                                                                                    |
+| `proxy`        | string (URI) | No       | -              | Proxy server address, format: `http://proxy:port` or `https://proxy:port`                                   |
+| `json_options` | json         | No       | -              | JSON options, like: `{"schema": {}, "prompt": true}`                                                        |
 
 ### Engine Types
 
@@ -56,6 +62,90 @@ POST https://api.anycrawl.dev/v1/scrape
 - **Advantages**: Deep Chrome DevTools integration, excellent performance metrics, faster execution
 - **Limitations**: **Does not support ARM CPU architecture**
 
+### Output Formats
+
+You can specify which data formats to include in the response using the `formats` parameter:
+
+#### `markdown`
+
+- **Description**: Converts HTML content to clean, structured Markdown format
+- **Use Case**: Optimal for LLM processing, documentation, and content analysis
+- **Recommended For**: Text-heavy content, articles, blogs
+
+#### `html`
+
+- **Description**: Returns cleaned and formatted HTML content
+- **Use Case**: When you need structured HTML with preserved formatting
+- **Recommended For**: Web content that needs to maintain HTML structure
+
+#### `text`
+
+- **Description**: Extracts plain text content without any formatting
+- **Use Case**: Simple text extraction for basic content analysis
+- **Recommended For**: Text-only processing, keyword extraction
+
+#### `screenshot`
+
+- **Description**: Captures a screenshot of the visible page area
+- **Use Case**: Visual representation of the webpage
+- **Limitations**: Only available with `playwright` and `puppeteer` engines
+- **Recommended For**: Visual verification, UI testing
+
+#### `screenshot@fullPage`
+
+- **Description**: Captures a full-page screenshot including content below the fold
+- **Use Case**: Complete visual capture of the entire webpage
+- **Limitations**: Only available with `playwright` and `puppeteer` engines
+- **Recommended For**: Complete page documentation, archival purposes
+
+#### `rawHtml`
+
+- **Description**: Returns the original, unprocessed HTML source
+- **Use Case**: When you need the exact HTML as received from the server
+- **Recommended For**: Technical analysis, debugging, preserving original structure
+
+### JSON options object
+
+The `json_options` parameter is an object that accepts the following parameters:
+
+- `schema`: The schema to use for the extraction.
+- `prompt`: The prompt to use for the extraction without a schema.
+
+#### Example
+
+```json
+{
+    "schema": {},
+    "prompt": "Extract the title and content of the page"
+}
+```
+
+or
+
+```json
+{
+    "schema": {
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string"
+            },
+            "company_name": {
+                "type": "string"
+            },
+            "summary": {
+                "type": "string"
+            },
+            "is_open_source": {
+                "type": "boolean"
+            }
+        },
+        "required": ["company_name", "summary"]
+    },
+    "prompt": "Extract the company name, summary, and if it is open source"
+}
+```
+
 ## Response Format
 
 ### Success Response (HTTP 200)
@@ -66,27 +156,19 @@ POST https://api.anycrawl.dev/v1/scrape
 {
     "success": true,
     "data": {
-        "url": "https://example.com",
+        "url": "https://mock.httpstatus.io/200",
         "status": "completed",
-        "jobId": "7a2e165d-8f81-4be6-9ef7-23222330a396",
-        "title": "Page Title",
-        "html": "<html>Page HTML content</html>",
-        "markdown": "# Page Title\n\nPage content in Markdown",
-        "metadata": [],
-        "timestamp": "2025-05-25T07:56:44.162Z"
-    }
-}
-```
-
-#### Failed Scraping
-
-```json
-{
-    "success": true,
-    "data": {
-        "url": "https://example.com/404",
-        "status": "failed",
-        "error": "Request blocked - received 403 status code."
+        "jobId": "c9fb76c4-2d7b-41f9-9141-b9ec9af58b39",
+        "title": "",
+        "metadata": [
+            {
+                "name": "color-scheme",
+                "content": "light dark"
+            }
+        ],
+        "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">200 OK</pre></body></html>",
+        "screenshot": "http://localhost:8080/v1/public/storage/file/screenshot-c9fb76c4-2d7b-41f9-9141-b9ec9af58b39.jpeg",
+        "timestamp": "2025-07-01T04:38:02.951Z"
     }
 }
 ```
@@ -120,6 +202,112 @@ POST https://api.anycrawl.dev/v1/scrape
 {
     "success": false,
     "error": "Invalid API key"
+}
+```
+
+### Failed Scraping
+
+```json
+{
+    "success": false,
+    "error": "Scrape task failed",
+    "message": "Page is not available: 404 ",
+    "data": {
+        "url": "https://mock.httpstatus.io/404",
+        "status": "failed",
+        "type": "http_error",
+        "message": "Page is not available: 404 ",
+        "code": 404,
+        "metadata": [
+            {
+                "name": "color-scheme",
+                "content": "light dark"
+            }
+        ],
+        "jobId": "34cd1d26-eb83-40ce-9d63-3be1a901f4a3",
+        "title": "",
+        "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">404 Not Found</pre></body></html>",
+        "screenshot": "screenshot-34cd1d26-eb83-40ce-9d63-3be1a901f4a3.jpeg",
+        "timestamp": "2025-07-01T04:36:20.978Z",
+        "statusCode": 404,
+        "statusMessage": ""
+    }
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "Scrape task failed",
+    "message": "Page is not available: 502 ",
+    "data": {
+        "url": "https://mock.httpstatus.io/502",
+        "status": "failed",
+        "type": "http_error",
+        "message": "Page is not available: 502 ",
+        "code": 502,
+        "metadata": [
+            {
+                "name": "color-scheme",
+                "content": "light dark"
+            }
+        ],
+        "jobId": "5fc50008-07e0-4913-a6af-53b0b3e0214b",
+        "title": "",
+        "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">502 Bad Gateway</pre></body></html>",
+        "screenshot": "screenshot-5fc50008-07e0-4913-a6af-53b0b3e0214b.jpeg",
+        "timestamp": "2025-07-01T04:39:59.981Z",
+        "statusCode": 502,
+        "statusMessage": ""
+    }
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "Scrape task failed",
+    "message": "Page is not available: 400 ",
+    "data": {
+        "url": "https://mock.httpstatus.io/400",
+        "status": "failed",
+        "type": "http_error",
+        "message": "Page is not available: 400 ",
+        "code": 400,
+        "metadata": [
+            {
+                "name": "color-scheme",
+                "content": "light dark"
+            }
+        ],
+        "jobId": "0081747c-1fc5-44f9-800c-e27b24b55a2c",
+        "title": "",
+        "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">400 Bad Request</pre></body></html>",
+        "screenshot": "screenshot-0081747c-1fc5-44f9-800c-e27b24b55a2c.jpeg",
+        "timestamp": "2025-07-01T04:38:24.136Z",
+        "statusCode": 400,
+        "statusMessage": ""
+    }
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "Scrape task failed",
+    "message": "Page is not available",
+    "data": {
+        "url": "https://httpstat.us/401",
+        "status": "failed",
+        "type": "http_error",
+        "message": "Page is not available"
+    }
 }
 ```
 

@@ -17,7 +17,7 @@ const defaultOptions: EngineOptions = {
     requestHandlerTimeoutSecs: 60,
     keepAlive: process.env.ANYCRAWL_KEEP_ALIVE === "false" ? false : true,
     proxyConfiguration: proxyConfiguration,
-    useSessionPool: false,
+    useSessionPool: true,
     persistCookiesPerSession: false
 };
 

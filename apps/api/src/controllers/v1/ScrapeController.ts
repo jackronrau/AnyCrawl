@@ -17,8 +17,7 @@ export class ScrapeController {
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             // Check if job failed
             if (job.status === 'failed' || job.error) {
-                const statusCode = jobData.statusCode || 422;
-                res.status(statusCode).json({
+                res.status(200).json({
                     success: false,
                     error: "Scrape task failed",
                     message: job.message || "The scraping task could not be completed",
