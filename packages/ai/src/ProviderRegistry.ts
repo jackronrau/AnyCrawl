@@ -1,14 +1,10 @@
 import { createProviderRegistry, LanguageModel } from "ai";
 import { createOpenAI, openai } from "@ai-sdk/openai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { aiConfig, getDefaultLLModelId, getEnabledModelIdByModelKey } from "./utils/helper.js";
 
 type ProviderRegistry = ReturnType<typeof createProviderRegistry>;
 
-const openrouter = createOpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
-});
 const separator = '/';
 let providerRegistry: ProviderRegistry;
 
