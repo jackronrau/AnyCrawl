@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Application } from "express";
 import v1Router from "./routers/v1/index.js";
 import v1PublicRouter from "./routers/v1/public.js";
 import bodyParser from "body-parser";
@@ -11,7 +11,7 @@ import { checkCreditsMiddleware } from "./middlewares/CheckCreditsMiddleware.js"
 import { deductCreditsMiddleware } from "./middlewares/DeductCreditsMiddleware.js";
 import { log, ConsoleStream } from "@anycrawl/libs/log";
 
-export const app = express();
+export const app: Application = express();
 const port = process.env.ANYCRAWL_API_PORT || 8080;
 
 app.disable("x-powered-by");
