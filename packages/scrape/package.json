@@ -34,6 +34,11 @@
             "types": "./dist/Utils.d.ts",
             "import": "./dist/Utils.js",
             "default": "./dist/Utils.js"
+        },
+        "./types/*": {
+            "types": "./dist/types/*.d.ts",
+            "import": "./dist/types/*.js",
+            "default": "./dist/types/*.js"
         }
     },
     "devDependencies": {

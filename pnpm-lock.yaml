@@ -62,6 +62,9 @@ importers:
       response-time:
         specifier: ^2.3.3
         version: 2.3.3
+      zod:
+        specifier: ^3.25.49
+        version: 3.25.67
     devDependencies:
       '@anycrawl/typescript-config':
         specifier: workspace:*
@@ -108,9 +111,6 @@ importers:
       ts-jest:
         specifier: ^29.3.2
         version: 29.3.2(@babel/core@7.27.1)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.27.1))(esbuild@0.25.4)(jest@29.7.0(@types/node@22.14.1)(ts-node@10.9.2(@types/node@22.14.1)(typescript@5.8.3)))(typescript@5.8.3)
-      zod:
-        specifier: ^3.25.49
-        version: 3.25.67
 
   apps/docs:
     dependencies:
