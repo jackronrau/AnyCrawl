@@ -52,15 +52,19 @@ jobs:
               id: version
               run: |
                   if [[ $GITHUB_REF == refs/tags/* ]]; then
-                    # Tag push: create latest and version tags
+                    # Tag push: create version tags, and latest only for v* tags
                     VERSION=${GITHUB_REF#refs/tags/}
                     echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-                    echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.suffix }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
+                    if [[ $VERSION == v* ]]; then
+                      echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.suffix }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
+                    else
+                      echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
+                    fi
                   elif [[ $GITHUB_REF == refs/heads/* ]]; then
-                    # Branch push: create latest and branch tags
+                    # Branch push: only create branch tags
                     BRANCH=${GITHUB_REF#refs/heads/}
                     echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
-                    echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.suffix }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
+                    echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
                   else
                     # PR: only create PR tags
                     echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }}-${{ matrix.suffix }}" >> $GITHUB_OUTPUT
@@ -102,22 +106,31 @@ jobs:
                   if [[ $GITHUB_REF == refs/tags/* ]]; then
                     VERSION=${GITHUB_REF#refs/tags/}
                     echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-                    echo "TAG_TYPE=version" >> $GITHUB_OUTPUT
+                    if [[ $VERSION == v* ]]; then
+                      echo "TAG_TYPE=version" >> $GITHUB_OUTPUT
+                      echo "CREATE_LATEST=true" >> $GITHUB_OUTPUT
+                    else
+                      echo "TAG_TYPE=version" >> $GITHUB_OUTPUT
+                      echo "CREATE_LATEST=false" >> $GITHUB_OUTPUT
+                    fi
                   elif [[ $GITHUB_REF == refs/heads/* ]]; then
                     BRANCH=${GITHUB_REF#refs/heads/}
                     echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
                     echo "TAG_TYPE=branch" >> $GITHUB_OUTPUT
+                    echo "CREATE_LATEST=false" >> $GITHUB_OUTPUT
                   fi
 
             - name: Create and push multi-arch manifest
               run: |
-                  # Always create latest manifest
-                  docker buildx imagetools create \
-                    --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-                    ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
-                    ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
-
-                  echo "Created multi-arch manifest: latest"
+                  # Create latest manifest only for v* tags
+                  if [[ "${{ steps.version.outputs.CREATE_LATEST }}" == "true" ]]; then
+                    docker buildx imagetools create \
+                      --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+                      ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-amd64 \
+                      ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
+                    
+                    echo "Created multi-arch manifest: latest"
+                  fi
 
                   # Create additional manifest based on tag type
                   if [[ "${{ steps.version.outputs.TAG_TYPE }}" == "version" ]]; then
