@@ -26,19 +26,25 @@ AnyCrwal built an all-in-one image for AnyCrawl, the pre-built image is `ghcr.io
 docker run -p 8080:8080 ghcr.io/any4ai/anycrawl:latest
 ```
 
+- Notice: The arm64 architecture image did not include the `scrape-puppeteer` service. If you really need to use puppeteer, you can set platform to `linux/amd64` in docker run command, like this:
+
+```bash
+docker run -p 8080:8080 --platform linux/amd64 ghcr.io/any4ai/anycrawl:latest
+```
+
+> Notice: this will have a performance impact, lower than the native arm64 image.
+
 Run in background:
 
 ```bash
 docker run -d -p 8080:8080 ghcr.io/any4ai/anycrawl:latest
 ```
 
-If you want to run on Arm64 architecture, you can use the following command:
+If you want to run on Arm64 architecture (did not support puppeteer), you can use the following command:
 
 ```bash
 docker run -p 8080:8080 ghcr.io/any4ai/anycrawl:latest-arm64
 ```
-
-- Notice: The arm64 image did not include the `scrape-puppeteer` service, because it is not supported on Arm64 architecture.
 
 ### With Environment Variables
 
