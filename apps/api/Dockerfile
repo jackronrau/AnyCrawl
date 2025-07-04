@@ -18,15 +18,17 @@ RUN apk add --no-cache \
 FROM base AS build
 WORKDIR /usr/src/app
 
-# Copy package files
+# Copy package files for dependency installation
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
 
-# Install dependencies and build
+# Install dependencies first (better caching)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# Copy source code and build
 COPY . .
-RUN pnpm --filter='!docs' run build
+RUN pnpm run build:no-docs
 
 FROM base AS api
 WORKDIR /usr/src/app

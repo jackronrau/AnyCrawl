@@ -1,9 +1,8 @@
 import { Response } from "express";
 import { z } from "zod";
 import { scrapeSchema } from "../../types/ScrapeSchema.js";
-import { QueueManager } from "@anycrawl/scrape/managers/Queue";
+import { QueueManager, CrawlerErrorType } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
-import { CrawlerErrorType } from "@anycrawl/scrape";
 
 export class ScrapeController {
     public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {

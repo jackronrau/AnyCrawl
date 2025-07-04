@@ -12,12 +12,59 @@ AnyCrawl provides pre-built Docker images through GitHub Container Registry. You
 
 The following images are available from [GitHub Container Registry](https://github.com/any4ai/AnyCrawl/packages):
 
+- **anycrawl**: All-in-one image for AnyCrawl. It includes all the services and dependencies.
 - **anycrawl-api**: Main API service
 - **anycrawl-scrape-cheerio**: Cheerio scraping engine
 - **anycrawl-scrape-playwright**: Playwright scraping engine
 - **anycrawl-scrape-puppeteer**: Puppeteer scraping engine
 
+## Quick Start
+
+AnyCrwal built an all-in-one image for AnyCrawl, the pre-built image is `ghcr.io/any4ai/anycrawl:latest`, which includes all the services and dependencies. You can run it with the following command:
+
+```bash
+docker run -p 8080:8080 ghcr.io/any4ai/anycrawl:latest
+```
+
+Run in background:
+
+```bash
+docker run -d -p 8080:8080 ghcr.io/any4ai/anycrawl:latest
+```
+
+If you want to run on Arm64 architecture, you can use the following command:
+
+```bash
+docker run -p 8080:8080 ghcr.io/any4ai/anycrawl:latest-arm64
+```
+
+- Notice: The arm64 image did not include the `scrape-puppeteer` service, because it is not supported on Arm64 architecture.
+
+### With Environment Variables
+
+```bash
+# Run with custom configuration
+docker run -d \
+  -p 8080:8080 \
+  -e NODE_ENV=production \
+  -e ANYCRAWL_API_AUTH_ENABLED=false \
+  -e ANYCRAWL_HEADLESS=true \
+  ghcr.io/any4ai/anycrawl:latest
+```
+
+### With .env File
+
+```bash
+# Run with local .env file
+docker run -d \
+  -p 8080:8080 \
+  -v $(pwd)/.env:/usr/src/app/.env:ro \
+  ghcr.io/any4ai/anycrawl:latest
+```
+
 # Docker build
+
+If you want to build your own image, you can follow the steps below.
 
 ## Prerequisites
 
