@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-alpha.8] - 2025-07-04
+
+### Added
+
+- Advanced proxy configuration options including URL-based routing and tiered proxy management
+- Multi-architecture Docker build support for ALL-IN-ONE with architecture detection and GitHub Actions workflow for automated image building and pushing
+- AI provider management module with configuration, model mapping, and cost tracking features
+- LLMExtract agent for structured-data extraction with enhanced model interaction capabilities (next version will support etraction in scrape)
+- Performance testing script with K6 for load testing with metrics and scenarios
+- Fingerprinting options for Puppeteer and Playwright configurations for using newer version Chrome
+- Enhanced Docker documentation with quick start guide and Arm64 architecture support
+
+### Changed
+
+- Enhanced HTML to Markdown conversion with custom rules for whitespace, divs, spans, emphasis, and line breaks
+- Improved scraping functionality with enhanced error handling and refined response structure
+- Updated project configuration and dependencies, including knip configuration and improved dependency management
+- Refactored proxy configuration by extending Crawlee's ProxyConfiguration for simplified management
+- Improved null safety in DataExtractor by using optional chaining for userData properties
+- Updated scripts for improved development workflow with type checking
+
+### Fixed
+
+- Improved error logging in EngineConfigurator for better debugging
+- Enhanced icon rendering logic to handle undefined cases and ensure proper component type handling
+- Improved helper function getEnabledModelIdByModelKey for better reliability
+- Handle 403 Forbidden responses in BaseEngine to improve error management
+- Fixed Docker image tagging logic in GitHub Actions workflows
+
 ## [0.0.1-alpha.7] - 2025-06-17
 
 ### Added
