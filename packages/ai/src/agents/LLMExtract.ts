@@ -106,10 +106,10 @@ class LLMExtract extends BaseAgent {
     }
 
     /**
- * Create field-specific prompt (递归展开所有嵌套字段)
- */
+     * Create field-specific prompt (递归展开所有嵌套字段)
+     */
     private createFieldPrompt(schema: JSONSchema7, indent: string = ''): string {
-        if (!schema.properties || typeof schema.properties !== 'object') return '';
+        if (!schema || typeof schema !== 'object' || !schema.properties || typeof schema.properties !== 'object') return '';
         const fields = Object.keys(schema.properties);
         if (fields.length === 0) return "";
 
