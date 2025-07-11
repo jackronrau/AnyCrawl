@@ -1,32 +1,59 @@
-import { generateObject, JSONSchema7, jsonSchema } from "ai";
+import { generateObject, JSONSchema7, jsonSchema, streamObject, NoObjectGeneratedError } from "ai";
 import { BaseAgent } from "./BaseAgent.js";
 import { TextChunker, ChunkResult } from "./TextChunker.js";
 import { log } from "@anycrawl/libs";
+import { buildExtractionPrompt, EXTRACT_SYSTEM_PROMPT } from "../prompts/extract.prompts.js";
 
-const extractPrompt = `Analyze the given Markdown content from a web page and produce a JSON object that strictly follows the provided schema. Follow these steps:
-
-<thinking>
-1. Carefully review the schema to understand the expected structure and data types.
-2. Examine the Markdown content and identify all the relevant information needed to populate the schema fields.
-3. For each schema field, extract the corresponding data from the Markdown content, ensuring that the data type matches the schema requirements.
-4. If any schema field is missing data in the Markdown content, use 'null' to represent the missing information.
-5. Construct the final JSON object by combining all the extracted data, following the schema structure exactly.
-6. Validate the JSON object to ensure it is a valid and well-formed representation of the Markdown content.
-</thinking>
-
-<result>
-{
-/* Populate the JSON object here, strictly following the provided schema */
+// --- Schema normalization helpers ---
+function removeDefaultProperty(obj: any): any {
+    if (Array.isArray(obj)) {
+        return obj.map(removeDefaultProperty);
+    } else if (obj && typeof obj === "object") {
+        const { default: _default, ...rest } = obj;
+        return Object.fromEntries(
+            Object.entries(rest).map(([k, v]) => [k, removeDefaultProperty(v)])
+        );
+    }
+    return obj;
 }
-</result>
 
-Remember, your only goal is to produce a valid JSON object that accurately represents the Markdown content, without making any assumptions or inferences beyond what is explicitly stated in the input data.`;
+function normalizeSchema(schema: any): any {
+    if (schema && schema.type === "array") {
+        // Wrap array schema in an object with 'items' property
+        return {
+            type: "object",
+            properties: {
+                items: schema,
+            },
+            required: ["items"],
+            additionalProperties: false,
+        };
+    } else if (schema && typeof schema === "object" && !schema.type) {
+        // If schema is a plain object (no type), treat as properties
+        return {
+            type: "object",
+            properties: Object.fromEntries(
+                Object.entries(schema).map(([key, value]) => {
+                    return [key, normalizeSchema(value)];
+                })
+            ),
+            required: Object.keys(schema),
+            additionalProperties: false,
+        };
+    }
+    // Remove default property recursively
+    return removeDefaultProperty(schema);
+}
 
 // Interfaces
 interface ExtractOptions {
     prompt?: string;
     maxTokensInput?: number;
     chunkOverlap?: number;
+    systemPrompt?: string; //used for override system prompt, and work for once call
+    costLimit?: number; //used for override cost limit, and work for once call
+    schemaName?: string;
+    schemaDescription?: string;
 }
 
 interface ExtractResult {
@@ -55,7 +82,7 @@ class LLMExtract extends BaseAgent {
     private systemPrompt: string;
     private textChunker: TextChunker;
 
-    constructor(modelId: string, prompt: string = extractPrompt, costLimit: number | null = null) {
+    constructor(modelId: string, prompt: string = EXTRACT_SYSTEM_PROMPT, costLimit: number | null = null) {
         super(modelId, costLimit);
         this.systemPrompt = prompt;
         this.textChunker = new TextChunker(this.countTokens.bind(this));
@@ -69,31 +96,47 @@ class LLMExtract extends BaseAgent {
     }
 
     /**
-     * Extract from a single chunk
+     * Extract field names from schema for prompt construction
      */
-    private async extractFromChunk(chunk: string, schema: JSONSchema7, options: ExtractOptions): Promise<any> {
-        const { prompt = null } = options;
+    private getSchemaFields(schema: JSONSchema7): string[] {
+        if (schema.properties && typeof schema.properties === 'object') {
+            return Object.keys(schema.properties);
+        }
+        return [];
+    }
 
-        const fullPrompt = prompt
-            ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${prompt}. If schema is provided, strictly follow it.\n\n${chunk}`
-            : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${chunk}`;
+    /**
+     * Create field-specific prompt (递归展开所有嵌套字段)
+     */
+    private createFieldPrompt(schema: JSONSchema7, indent: string = ''): string {
+        if (!schema || typeof schema !== 'object' || !schema.properties || typeof schema.properties !== 'object') return '';
+        const fields = Object.keys(schema.properties);
+        if (fields.length === 0) return "";
 
-        const result = await generateObject({
-            model: this.llm,
-            schema: jsonSchema(schema),
-            prompt: fullPrompt,
-            system: this.systemPrompt || "",
-            maxRetries: 3,
-        });
+        const fieldDescriptions = fields.map(field => {
+            const propSchema = schema.properties?.[field] as JSONSchema7;
+            const type = propSchema?.type || 'any';
+            const description = propSchema?.description || '';
+            let typeDescription = '';
+            if (type === 'array') {
+                const items = propSchema.items as JSONSchema7;
+                const itemType = items && typeof items === 'object' && 'type' in items ? items.type : 'any';
+                typeDescription = `(array of ${itemType}s)`;
+                // 递归展开 array 的 item
+                if (items && items.type === 'object') {
+                    return `${indent}- ${field} ${typeDescription}: ${description}\n${this.createFieldPrompt(items, indent + '    ')}`;
+                }
+            } else if (type === 'object') {
+                typeDescription = '(object)';
+                // 递归展开 object
+                return `${indent}- ${field} ${typeDescription}: ${description}\n${this.createFieldPrompt(propSchema, indent + '    ')}`;
+            } else {
+                typeDescription = `(${type})`;
+            }
+            return `${indent}- ${field} ${typeDescription}: ${description}`;
+        }).join('\n');
 
-        // Calculate actual cost based on model config
-        const inputTokens = this.countTokens(fullPrompt + this.systemPrompt);
-        const outputTokens = this.countTokens(JSON.stringify(result.object || {}));
-
-        // Track cost
-        this.trackCall("extract", { chunkLength: chunk.length }, inputTokens, outputTokens);
-
-        return result;
+        return fieldDescriptions;
     }
 
     /**
@@ -164,9 +207,11 @@ class LLMExtract extends BaseAgent {
     }
 
     /**
-     * Single extraction method
+     * Unified extraction logic for both single and chunked extraction
      */
     async perform(text: string | string[], schema: JSONSchema7, options: ExtractOptions = {}): Promise<ExtractResult> {
+        // --- normalize schema ---
+        const normalizedSchema = normalizeSchema(schema);
         // Get default parameters based on model config
         const defaults = this.getDefaultParams();
         const {
@@ -182,103 +227,96 @@ class LLMExtract extends BaseAgent {
 
         // If text is short enough, process directly
         if (inputTokens <= maxTokensInput) {
-            const { prompt = null } = options;
+            const { prompt } = options;
+            const fieldPrompt = this.createFieldPrompt(normalizedSchema);
+            const fullPrompt = buildExtractionPrompt({ prompt: prompt ?? undefined, fieldPrompt, content: inputText });
+            log.debug(`🔍 Normalized schema: ${JSON.stringify(normalizedSchema)}`);
+            log.debug(`🔍 Full prompt: ${fullPrompt}`);
+            try {
+                const result = await generateObject({
+                    model: this.llm,
+                    system: options.systemPrompt || this.systemPrompt || "",
+                    messages: [{ role: 'user', content: fullPrompt }],
+                    schema: jsonSchema(normalizedSchema),
+                });
 
-            const fullPrompt = prompt
-                ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${prompt}. If schema is provided, strictly follow it.\n\n${inputText}`
-                : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${inputText}`;
+                const systemPrompt = options.systemPrompt || this.systemPrompt || "";
+                const promptTokens = this.countTokens(fullPrompt + systemPrompt);
+                const outputTokens = this.countTokens(JSON.stringify(result.object || {}));
 
-            const result = await generateObject({
-                model: this.llm,
-                schema: jsonSchema(schema),
-                prompt: fullPrompt,
-                system: this.systemPrompt || "",
-                maxRetries: 3,
-            });
+                this.trackCall("extract", { direct: true }, promptTokens, outputTokens);
 
-            const promptTokens = this.countTokens(fullPrompt + this.systemPrompt);
-            const outputTokens = this.countTokens(JSON.stringify(result.object || {}));
+                const finalResult = {
+                    data: result.object || result,
+                    tokens: {
+                        input: promptTokens,
+                        output: outputTokens,
+                        total: promptTokens + outputTokens
+                    },
+                    chunks: 1,
+                    cost: this.costTracking.getTotalCost()
+                };
 
-            this.trackCall("extract", { direct: true }, promptTokens, outputTokens);
+                // Output cost tracking information
+                log.debug(`💰 Cost: $${finalResult.cost.toFixed(6)} | Tokens: ${finalResult.tokens.total}`);
+                return finalResult;
 
-            const finalResult = {
-                data: result.object || result,
-                tokens: {
-                    input: promptTokens,
-                    output: outputTokens,
-                    total: promptTokens + outputTokens
-                },
-                chunks: 1,
-                cost: this.costTracking.getTotalCost()
-            };
+            } catch (error) {
+                if (NoObjectGeneratedError.isInstance(error)) {
+                    log.error('Failed to generate object from LLM response', {
+                        cause: error.cause,
+                        finishReason: error.finishReason,
+                        usage: error.usage
+                    });
+                } else if (error instanceof Error && error.message.includes('Cost limit exceeded"')) {
+                    log.warning('Cost limit exceeded"', {
+                        error: error instanceof Error ? error.message : String(error)
+                    });
+                } else {
+                    log.error('Error during extraction:', {
+                        error: error instanceof Error ? error.message : String(error)
+                    });
+                }
 
-            // Output cost tracking information
-            log.debug(`💰 Cost: $${finalResult.cost.toFixed(6)} | Tokens: ${finalResult.tokens.total}`);
-
-            return finalResult;
+                throw error;
+            }
         }
 
         // For longer text, use chunking
         log.debug(`📦 Text too long, splitting into chunks (max: ${maxTokensInput}, overlap: ${chunkOverlap})`);
-        const batchResult = await this.performBatchExtract([inputText], schema, { ...options, maxTokensInput, chunkOverlap });
-        const mergedResult = this.mergeResults(batchResult.results, schema);
-
-        const finalResult = {
-            data: mergedResult,
-            tokens: batchResult.totalTokens,
-            chunks: batchResult.totalChunks,
-            cost: batchResult.cost
-        };
-
-        // Output cost tracking information
-        log.debug(`💰 Total Cost: $${finalResult.cost?.toFixed(6)} | Total Tokens: ${finalResult.tokens.total} | Chunks: ${finalResult.chunks}`);
-
-        return finalResult;
-    }
-
-    /**
-     * Batch extraction method for multiple texts or chunks
-     */
-    async performBatchExtract(texts: string[], schema: JSONSchema7, options: ExtractOptions = {}): Promise<BatchExtractResult> {
-        const defaults = this.getDefaultParams();
-        const {
-            maxTokensInput = defaults.maxTokensInput,
-            chunkOverlap = defaults.chunkOverlap
-        } = options;
-
-        // Use TextChunker to split texts
-        const allChunks = this.textChunker.splitMultipleTexts(texts, {
+        const allChunks = this.textChunker.splitMultipleTexts([inputText], {
             maxTokens: maxTokensInput,
             overlapTokens: chunkOverlap
         });
-
         const allResults: any[] = [];
-
-        log.debug(`📦 Processing ${allChunks.length} chunks`);
-
-        // Process each chunk
         for (const [index, chunkInfo] of allChunks.entries()) {
             try {
                 log.debug(`⚡ Processing chunk ${index + 1}/${allChunks.length} (${chunkInfo.tokens} tokens)`);
-                const result = await this.extractFromChunk(chunkInfo.chunk, schema, options);
+                const fieldPrompt = this.createFieldPrompt(normalizedSchema);
+                const fullPrompt = buildExtractionPrompt({ prompt: options.prompt ?? undefined, fieldPrompt, content: chunkInfo.chunk });
+                const result = await generateObject({
+                    model: this.llm,
+                    system: options.systemPrompt || this.systemPrompt || "",
+                    messages: [{ role: 'user', content: fullPrompt }],
+                    schema: jsonSchema(normalizedSchema),
+                });
                 allResults.push(result.object);
             } catch (error) {
                 log.error(`❌ Error processing chunk ${chunkInfo.startIndex}-${chunkInfo.endIndex}: ${error instanceof Error ? error.message : String(error)}`);
                 allResults.push(null);
             }
         }
-
-        // Track merge operation
         this.trackCall("merge", { chunksCount: allChunks.length }, 0, 0);
-
+        const mergedResult = this.mergeResults(allResults, normalizedSchema);
         const totalTokens = this.costTracking.getTotalTokens();
-
-        return {
-            results: allResults,
-            totalTokens,
-            totalChunks: allChunks.length,
+        const finalResult = {
+            data: mergedResult,
+            tokens: totalTokens,
+            chunks: allChunks.length,
             cost: this.costTracking.getTotalCost()
         };
+        log.debug(`💰 Total Cost: $${finalResult.cost?.toFixed(6)} | Total Tokens: ${finalResult.tokens.total} | Chunks: ${finalResult.chunks}`);
+        return finalResult;
     }
 
     /**

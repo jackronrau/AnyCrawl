@@ -94,7 +94,7 @@ COPY --from=build /usr/src/app/apps/api/docker-entrypoint.sh ./apps/api/
 COPY --from=build /usr/src/app/apps/api/drizzle ./apps/api/drizzle
 
 # Install production dependencies
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
 # Install browser binaries for playwright (always)
 RUN cd /usr/src/app/packages/scrape && npx playwright install chromium

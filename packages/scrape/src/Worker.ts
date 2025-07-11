@@ -6,6 +6,10 @@ import { log } from "crawlee";
 import { Utils } from "./Utils.js";
 import { randomUUID } from "crypto";
 
+if (process.env.NODE_ENV !== "production") {
+    log.setLevel(log.LEVELS.DEBUG);
+}
+
 // Initialize Utils first
 const utils = Utils.getInstance();
 await utils.initializeKeyValueStore();

@@ -11,6 +11,7 @@ const pickedSchema = baseSchema.pick({
     wait_for: true,
     include_tags: true,
     exclude_tags: true,
+    json_options: true,
 });
 
 export const scrapeSchema = pickedSchema.transform((data) => ({
@@ -24,6 +25,7 @@ export const scrapeSchema = pickedSchema.transform((data) => ({
         waitFor: data.wait_for,
         includeTags: data.include_tags,
         excludeTags: data.exclude_tags,
+        json_options: data.json_options,
     }
 }));
 

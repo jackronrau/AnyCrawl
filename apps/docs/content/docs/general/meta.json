@@ -10,6 +10,7 @@
         "proxy-rule",
         "---Scrape---",
         "scrape",
+        "json-mode",
         "---Search---",
         "search"
     ]

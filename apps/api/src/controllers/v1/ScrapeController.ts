@@ -12,7 +12,7 @@ export class ScrapeController {
 
             const jobId = await QueueManager.getInstance().addJob(`scrape-${jobPayload.engine}`, jobPayload);
             // waiting job done
-            const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 30_000);
+            const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 60_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             // Check if job failed
             if (job.status === 'failed' || job.error) {

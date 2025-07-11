@@ -6,6 +6,7 @@ import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
 import { convert } from "html-to-text"
 import * as cheerio from "cheerio";
+import { LLMExtract } from "@anycrawl/ai";
 
 export interface MetadataEntry {
     name: string;
@@ -39,10 +40,28 @@ export interface ExtractionError {
 export class DataExtractor {
     private htmlTransformer: HTMLTransformer;
     private screenshotTransformer: ScreenshotTransformer;
+    private llmExtractMap: Map<string, LLMExtract> = new Map();
 
     constructor() {
         this.htmlTransformer = new HTMLTransformer();
         this.screenshotTransformer = new ScreenshotTransformer();
+    }
+
+    private getLLMExtractAgentKey(modelId: string): string {
+        return `${modelId}`;
+    }
+
+    /**
+     * Get LLM extract agent
+     * @param modelId - The model id, like "gpt-4o-mini"
+     * @returns LLM extract agent instance
+     */
+    getLLMExtractAgent(modelId: string): LLMExtract {
+        const key = this.getLLMExtractAgentKey(modelId);
+        if (!this.llmExtractMap.has(key)) {
+            this.llmExtractMap.set(key, new LLMExtract(modelId));
+        }
+        return this.llmExtractMap.get(key)!;
     }
 
     /**
@@ -204,39 +223,80 @@ export class DataExtractor {
         const options = context.request.userData?.options || {};
         const additionalFields: AdditionalFields = {};
 
-        if (formats.includes("html") || formats.includes("markdown")) {
-            // Extract and transform HTML content with optional include/exclude tags and URL resolution
-            const transformOptions: TransformOptions = {
-                includeTags: options.includeTags,
-                excludeTags: options.excludeTags,
-                baseUrl: context.request.url,
-                transformRelativeUrls: true
-            };
+        // Prepare all format tasks for concurrent execution
+        const formatTasks: Record<string, Promise<any>> = {};
+        const transformOptions: TransformOptions = {
+            includeTags: options.includeTags,
+            excludeTags: options.excludeTags,
+            baseUrl: context.request.url,
+            transformRelativeUrls: true
+        };
+        const page = (context as any).page;
 
-            const transformedHtml = await this.htmlTransformer.transformHtml($, context.request.url, transformOptions);
-
-            if (formats.includes("html")) {
-                additionalFields.html = transformedHtml;
-            }
-
-            if (formats.includes("markdown")) {
-                // Use transformed HTML for markdown conversion
-                additionalFields.markdown = this.processMarkdown(transformedHtml);
-            }
+        // Only generate transformHtml once if needed
+        let htmlPromise: Promise<string> | undefined = undefined;
+        if (formats.includes("html") || formats.includes("markdown") || formats.includes("json")) {
+            log.debug("[extractData] Start transformHtml (concurrent)");
+            htmlPromise = this.htmlTransformer.transformHtml($, context.request.url, transformOptions)
+                .then(result => {
+                    log.debug("[extractData] Finished transformHtml");
+                    return result;
+                });
+        }
+        // html and markdown are concurrent, but markdown depends on htmlPromise
+        if (formats.includes("html")) {
+            formatTasks.html = htmlPromise!;
+        }
+        // json need markdown
+        if (formats.includes("markdown") || formats.includes("json")) {
+            formatTasks.markdown = htmlPromise!.then(html => {
+                log.debug("[extractData] Start processMarkdown (after html)");
+                const md = this.processMarkdown(html);
+                log.debug("[extractData] Finished processMarkdown");
+                return md;
+            });
         }
         if (formats.includes("rawHtml")) {
-            additionalFields.rawHtml = baseContent.rawHtml;
+            formatTasks.rawHtml = Promise.resolve(baseContent.rawHtml);
         }
-
         if (formats.includes("text")) {
-            additionalFields.text = convert(baseContent.rawHtml);
+            formatTasks.text = Promise.resolve(convert(baseContent.rawHtml));
         }
-
-        // Handle screenshot capture for browser engines
-        const page = (context as any).page;
+        // Screenshot task is also concurrent
         if (page && typeof context.saveSnapshot === 'function' && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
-            additionalFields.screenshot = await this.screenshotTransformer.captureAndStoreScreenshot(context, page, formats);
+            formatTasks.screenshot = (async () => {
+                log.debug("[extractData] Start screenshot capture (concurrent)");
+                const result = await this.screenshotTransformer.captureAndStoreScreenshot(context, page, formats);
+                log.debug("[extractData] Finished screenshot capture");
+                return result;
+            })();
         }
+        // json_options, need to extract data from markdown
+        // TODO: consider to extract data from HTML, combine with tag info may be better
+        if (options.json_options) {
+            const modelId = process.env.DEFAULT_EXTRACT_MODEL || process.env.DEFAULT_LLM_MODEL || "gpt-4o";
+            if (!modelId || typeof modelId !== "string") {
+                throw new Error("json_options.modelId is required and must be a string");
+            }
+            formatTasks.json = (async () => {
+                const markdown = await (formatTasks.markdown ?? Promise.resolve(baseContent.markdown));
+                const llmExtractAgent = this.getLLMExtractAgent(modelId);
+                const result = await llmExtractAgent.perform(markdown, options.json_options.schema ?? null, {
+                    prompt: options.json_options.user_prompt ?? null,
+                    schemaName: options.json_options.schema_name ?? null,
+                    schemaDescription: options.json_options.schema_description ?? null,
+                });
+                return result.data;
+            })();
+        }
+        // All format tasks are executed concurrently, dependencies are handled by Promise chains
+        const formatKeys = Object.keys(formatTasks);
+        const formatResults = await Promise.all(Object.values(formatTasks));
+        formatKeys.forEach((key, idx) => {
+            if (formats.includes(key)) {
+                additionalFields[key] = formatResults[idx];
+            }
+        });
         return this.assembleData(context, baseContent, metadata, additionalFields);
     }
 

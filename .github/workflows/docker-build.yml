@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build and Push ALL-in-ONE Docker Image
 
 on:
     push:
