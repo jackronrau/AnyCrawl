@@ -315,6 +315,9 @@ importers:
 
   packages/scrape:
     dependencies:
+      '@anycrawl/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@anycrawl/libs':
         specifier: workspace:*
         version: link:../libs
