@@ -1,6 +1,31 @@
 import { z } from "zod";
 import { AVAILABLE_ENGINES } from "@anycrawl/scrape/managers/EngineQueue";
 
+// Define the recursive JSON Schema type
+export const jsonSchemaType: z.ZodType<any> = z.lazy(() =>
+    z.object({
+        type: z.enum(["object", "array", "string", "number", "boolean", "null"]),
+        properties: z.record(jsonSchemaType).optional(),
+        required: z.array(z.string()).optional(),
+    })
+);
+
+// define json options schema
+export const jsonOptionsSchema = z.object({
+    /**
+     * The JSON schema to be used for extracting structured data
+     */
+    schema: jsonSchemaType.optional(),
+
+    /**
+     * The user prompt to be used for extracting structured data
+     */
+    user_prompt: z.string().optional(),
+    schema_name: z.string().optional(),
+    schema_description: z.string().optional(),
+}).strict();
+
+// define base schema
 export const baseSchema = z.object({
     /**
      * The URL to be processed
@@ -25,7 +50,7 @@ export const baseSchema = z.object({
     /**
      * The timeout to be used
      */
-    timeout: z.number().min(1000).max(60_000).default(30_000),
+    timeout: z.number().min(1000).max(600_000).default(60_000),
 
     /**
      * The wait for to be used
@@ -46,6 +71,18 @@ export const baseSchema = z.object({
      * The exclude tags to be used
      */
     exclude_tags: z.array(z.string()).optional(),
+
+    /**
+     * The JSON schema to be used for extracting structured data
+     */
+    json_schema: jsonSchemaType.optional(),
+
+    /**
+     * The JSON options to be used for extracting structured data
+     */
+    json_options: jsonOptionsSchema.optional(),
 });
 
 export type BaseSchema = z.infer<typeof baseSchema>;
+
+export type JsonSchemaType = z.infer<typeof jsonSchemaType>;
