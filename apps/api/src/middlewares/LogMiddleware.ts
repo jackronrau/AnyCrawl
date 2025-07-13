@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { getDB, schemas } from "../db/index.js";
+import { getDB, schemas } from "@anycrawl/db";
 import { log } from "@anycrawl/libs/log";
 import { captureResponseBody, CapturedResponse } from "../utils/responseCapture.js";
 import { RequestWithAuth } from "../types/Types.js";

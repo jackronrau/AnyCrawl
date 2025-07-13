@@ -1,10 +1,7 @@
 import { Response, NextFunction } from "express";
-import { getDB, schemas } from "../db/index.js";
-import { eq, and, gt, gte, sql } from "drizzle-orm";
+import { getDB, schemas, eq, sql } from "@anycrawl/db";
 import { RequestWithAuth } from "../types/Types.js";
 import { log } from "@anycrawl/libs/log";
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { captureResponseBody, CapturedResponse } from "../utils/responseCapture.js";
 
 // did not need to deduct credits.
 const ignoreDeductRoutes: string[] = [
