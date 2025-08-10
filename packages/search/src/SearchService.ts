@@ -40,6 +40,10 @@ export class SearchService {
         return engine;
     }
 
+    /**
+     * Initialize the crawler
+     * @returns {Promise<void>}
+     */
     public async initializeCrawler() {
         if (!this.crawler) {
             log.info("Initializing crawler...");

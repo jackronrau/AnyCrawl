@@ -5,10 +5,8 @@ import { EngineQueueManager, AVAILABLE_ENGINES, ALLOWED_ENGINES } from "./manage
 import { log } from "crawlee";
 import { Utils } from "./Utils.js";
 import { randomUUID } from "crypto";
-
-if (process.env.NODE_ENV !== "production") {
-    log.setLevel(log.LEVELS.DEBUG);
-}
+import { EventManager } from "./managers/Event.js";
+import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./engines/Base.js";
 
 // Initialize Utils first
 const utils = Utils.getInstance();
@@ -29,14 +27,24 @@ async function runJob(job: Job) {
     if (!ALLOWED_ENGINES.includes(engineType)) {
         throw new Error(`Unsupported engine type: ${engineType}`);
     }
-    log.info(`Processing scraping job for URL: ${job.data.url} with engine: ${engineType}`);
+
+    const jobType = job.data.type || JOB_TYPE_SCRAPE;
+    log.info(`Processing ${jobType} job for URL: ${job.data.url} with engine: ${engineType}`);
+    console.log('job.data.options', job.data.options);
+    let options = job.data.options;
+    // if jobType is crawl, transform options
+    if (jobType === JOB_TYPE_CRAWL) {
+        options = { ...job.data.options.scrape_options };
+    }
+    console.log('job.data.options', options);
     const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url,
         {
             jobId: job.id,
             queueName: job.data.queueName,
-            type: job.data.type,
-            options: job.data.options || {},//from user input which be inserted into job.data as options
-        }//userData
+            type: jobType,
+            options: options || {},
+            crawl_options: jobType === JOB_TYPE_CRAWL ? job.data.options : null,
+        }
     );
     job.updateData({
         ...job.data,
@@ -54,14 +62,41 @@ async function runJob(job: Job) {
         log.info("Redis connection established");
         // Start the worker to handle new URLs
         log.info("Starting worker...");
-        await Promise.all(
-            // according the available engines, start the worker for each engine
-            AVAILABLE_ENGINES.map((engineType) =>
+        await Promise.all([
+            // Workers for scrape jobs
+            ...AVAILABLE_ENGINES.map((engineType) =>
                 WorkerManager.getInstance().getWorker(`scrape-${engineType}`, async (job: Job) => {
+                    job.updateData({
+                        ...job.data,
+                        type: JOB_TYPE_SCRAPE,
+                    });
                     await runJob(job);
                 })
-            )
-        );
+            ),
+            // Workers for crawl jobs
+            ...AVAILABLE_ENGINES.map((engineType) =>
+                WorkerManager.getInstance().getWorker(`crawl-${engineType}`, async (job: Job) => {
+                    job.updateData({
+                        ...job.data,
+                        type: JOB_TYPE_CRAWL,
+                    });
+                    await runJob(job);
+                }),
+            ),
+            // event listener for crawl jobs
+            ...AVAILABLE_ENGINES.map((engineType) => {
+                // check if db is set
+                if (process.env.ANYCRAWL_API_DB_CONNECTION) {
+                    EventManager.getInstance().getEvent(`crawl-${engineType}`).then((event) => {
+                        event.on('completed', async ({ jobId }) => {
+                        });
+                        event.on('failed', async ({ jobId }) => {
+                        });
+                    });
+                }
+            })
+        ]);
+
         log.info("Worker started successfully");
 
         // Check queue status periodically for all engines

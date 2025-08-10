@@ -4,7 +4,7 @@ import { crawlSchema } from "../../types/CrawlSchema.js";
 import { QueueManager, CrawlerErrorType, RequestTask } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
 import { randomUUID } from "crypto";
-import { cancelJob, createJob, getJob } from "../../utils/job.js";
+import { cancelJob, createJob, failedJob, getJob } from "@anycrawl/db";
 import { CrawlSchemaInput } from "../../types/CrawlSchema.js";
 
 export class CrawlController {
@@ -12,12 +12,12 @@ export class CrawlController {
      * Start a crawl job
      */
     public start = async (req: RequestWithAuth, res: Response): Promise<void> => {
+        let jobId: string | null = null;
         try {
             // Validate request body
             const jobPayload = crawlSchema.parse(req.body);
-
             // Add job to queue
-            const jobId = await QueueManager.getInstance().addJob(`crawl-${jobPayload.engine}`, jobPayload);
+            jobId = await QueueManager.getInstance().addJob(`crawl-${jobPayload.engine}`, jobPayload);
 
             req.creditsUsed = 0;
 
@@ -59,6 +59,9 @@ export class CrawlController {
                 });
             } else {
                 const message = error instanceof Error ? error.message : "Unknown error occurred";
+                if (jobId) {
+                    await failedJob(jobId, message);
+                }
                 res.status(500).json({
                     success: false,
                     error: "Internal server error",

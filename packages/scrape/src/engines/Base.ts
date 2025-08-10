@@ -1,4 +1,4 @@
-import { BrowserCrawlingContext, CheerioCrawlingContext, Configuration, log, PlaywrightCrawlingContext, ProxyConfiguration, PuppeteerCrawlingContext, RequestQueue, sleep } from "crawlee";
+import { BrowserCrawlingContext, CheerioCrawlingContext, Configuration, enqueueLinks, log, PlaywrightCrawlingContext, ProxyConfiguration, PuppeteerCrawlingContext, RequestQueue, sleep, Request } from "crawlee";
 import { Dictionary } from "crawlee";
 import { Utils } from "../Utils.js";
 import { ConfigValidator } from "../core/ConfigValidator.js";
@@ -12,6 +12,13 @@ import {
     ResponseStatus,
     CrawlerResponse
 } from "../types/crawler.js";
+import { insertJobResult } from "@anycrawl/db";
+import { JOB_RESULT_STATUS } from "../../../db/dist/map.js";
+import { EngineQueueManager } from "../managers/EngineQueue.js";
+import { randomUUID } from "node:crypto";
+
+export const JOB_TYPE_SCRAPE = 'scrape';
+export const JOB_TYPE_CRAWL = 'crawl';
 
 // Re-export core types for backward compatibility
 export type { MetadataEntry, BaseContent, ExtractionError } from "../core/DataExtractor.js";
@@ -313,6 +320,106 @@ export abstract class BaseEngine {
         }
     }
 
+    /**
+     * Handle crawl-specific logic
+     */
+    protected async handleCrawlLogic(context: CrawlingContext, data: any): Promise<void> {
+        console.log('handleCrawlLogic', context.request.userData);
+        const limit = context.request.userData.crawl_options?.limit || 10;
+        const maxDepth = context.request.userData.crawl_options?.max_depth || 10;
+        const strategy = context.request.userData.crawl_options?.strategy || 'same-domain';
+        const includePaths = context.request.userData.crawl_options?.include_paths || [];
+        const excludePaths = context.request.userData.crawl_options?.exclude_paths || [];
+        console.log('includePaths', includePaths);
+        console.log('excludePaths', excludePaths);
+        try {
+            // Split include_paths into globs and regexps to support both patterns
+            const includeGlobs: string[] = [];
+            const includeRegexps: RegExp[] = [];
+            for (const pattern of includePaths as Array<string>) {
+                if (typeof pattern !== 'string') continue;
+                // Support regex literal style strings: /pattern/flags
+                const match = pattern.match(/^\/(.*)\/([gimsuy]*)$/);
+                if (match) {
+                    const body: string = match[1] ?? '';
+                    const flagsStr: string = match[2] ?? '';
+                    try {
+                        includeRegexps.push(new RegExp(body, flagsStr));
+                        continue;
+                    } catch {
+                        // Fall through to treat as glob if regex is invalid
+                    }
+                }
+                // Otherwise treat as glob
+                includeGlobs.push(pattern);
+            }
+
+            // Build exclude list; if any exclude is provided, also exclude the current URL
+            const exclude: string[] = [];
+            if (Array.isArray(excludePaths) && excludePaths.length > 0) {
+                exclude.push(...(excludePaths as string[]));
+                exclude.push(context.request.url);
+            }
+
+            // enqueueLinks is context-aware and doesn't need explicit requestQueue
+            const links = await context.enqueueLinks({
+                ...(includeGlobs.length > 0 ? { globs: includeGlobs } : {}),
+                ...(includeRegexps.length > 0 ? { regexps: includeRegexps } : {}),
+                ...(exclude.length > 0 ? { exclude } : {}),
+                // Pass along the userData to new requests
+                userData: context.request.userData,
+                // Use 'all' strategy to crawl more broadly, or 'same-domain' for same domain
+                strategy: strategy,
+                // Optional: limit the number of links to prevent runaway crawling, minus 1 because the first request is already done.
+                limit: limit - 1,
+                onSkippedRequest: ({ url, reason }) => {
+                    log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Skipped (${reason}): ${url}`);
+                },
+                transformRequestFunction: (request) => {
+                    const jobId = request.userData?.jobId;
+                    if (!jobId) return request;
+                    console.log('request.userData', request.userData);
+                    // Depth handling: inherit parent's depth and increment
+                    const parentDepth = (context.request.userData as any)?.depth ?? 0;
+                    const nextDepth = parentDepth + 1;
+                    if (typeof maxDepth === 'number' && nextDepth > maxDepth) {
+                        // Skip enqueuing beyond max depth
+                        return null as any;
+                    }
+                    request.userData = { ...request.userData, depth: nextDepth } as any;
+
+                    // Use Crawlee's own uniqueKey computation to ensure consistency
+                    const baseUnique = request.uniqueKey ?? Request.computeUniqueKey({
+                        url: request.url,
+                        method: (request as any).method ?? 'GET',
+                        payload: (request as any).payload,
+                        keepUrlFragment: (request as any).keepUrlFragment ?? false,
+                        useExtendedUniqueKey: (request as any).useExtendedUniqueKey ?? false,
+                    });
+                    request.uniqueKey = `${jobId}-${baseUnique}`;
+                    return request;
+                }
+            });
+            log.info(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Links enqueued: ${links.processedRequests.length}`);
+        } catch (error) {
+            log.error(`Error in enqueueLinks: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * Store crawl data
+     */
+    protected async storeCrawlData(crawlJobId: string, url: string, data: any): Promise<void> {
+        const keyValueStore = await Utils.getInstance().getKeyValueStore();
+        const key = `crawl-data-${crawlJobId}-${Buffer.from(url).toString('base64')}`;
+
+        await keyValueStore.setValue(key, {
+            url,
+            data,
+            crawled_at: new Date().toISOString()
+        });
+    }
+
     constructor(options: EngineOptions = {}) {
         // Validate options using ConfigValidator
         ConfigValidator.validate(options);
@@ -372,6 +479,16 @@ export abstract class BaseEngine {
 
                 // Extract data using DataExtractor
                 data = await this.dataExtractor.extractData(context);
+                // insert job result
+                await insertJobResult(context.request.userData.jobId, context.request.url, data, JOB_RESULT_STATUS.SUCCESS);
+                // Handle crawl logic if this is a crawl job
+                console.log('context.request.userData.type', context.request.userData.type);
+                if (context.request.userData.type === JOB_TYPE_CRAWL) {
+
+                    await this.handleCrawlLogic(context, data);
+                }
+                // add jobId to data
+                data.jobId = context.request.userData.jobId;
 
             } catch (error) {
                 const { queueName, jobId } = context.request.userData;
@@ -386,14 +503,15 @@ export abstract class BaseEngine {
             const { queueName, jobId } = context.request.userData;
 
             // Log success
-            log.info(`[${queueName}] [${jobId}] Pushing data for ${data.url}`);
+            log.info(`[${queueName}] [${jobId}] Pushing data for ${context.request.url}`);
+            // store into job table
 
             // Update job status if jobId exists
             if (jobId) {
                 if (isHttpError) {
                     const status = this.extractResponseStatus(context.response as CrawlerResponse);
                     await this.handleFailedRequest(context, status, data);
-                } else {
+                } else if (context.request.userData.type === 'scrape') {
                     await this.jobManager.markCompleted(jobId, queueName, data);
                 }
             }

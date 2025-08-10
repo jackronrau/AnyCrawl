@@ -349,6 +349,9 @@ importers:
       '@anycrawl/ai':
         specifier: workspace:*
         version: link:../ai
+      '@anycrawl/db':
+        specifier: workspace:*
+        version: link:../db
       '@anycrawl/libs':
         specifier: workspace:*
         version: link:../libs

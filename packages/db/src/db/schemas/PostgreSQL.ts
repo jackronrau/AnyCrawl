@@ -91,14 +91,10 @@ export const jobs = p.pgTable("jobs", {
     failed: p.integer("failed").notNull().default(0),
     // Number of credits consumed
     creditsUsed: p.integer("credits_used").notNull().default(0),
-    // job data results from job
-    jobResults: p.jsonb("job_results"),
     // Origin, playground or api
     origin: p.text("origin").notNull(),
     // status of job
     status: p.text("status").notNull(),
-    // job status in the queue
-    jobStatus: p.text("job_status").notNull(),
     // job success or not
     isSuccess: p.boolean("is_success").notNull().default(false),
     // job error message
@@ -106,5 +102,25 @@ export const jobs = p.pgTable("jobs", {
     // job created at
     createdAt: p.timestamp("created_at").notNull(),
     // job updated at
+    updatedAt: p.timestamp("updated_at").notNull(),
+});
+
+export const jobResults = p.pgTable("job_results", {
+    // Primary key with auto-incrementing ID
+    uuid: p
+        .uuid()
+        .primaryKey()
+        .$defaultFn(() => randomUUID()),
+    // job uuid
+    jobUuid: p.uuid("job_uuid").references(() => jobs.uuid),
+    // url
+    url: p.text("url").notNull(),
+    // data
+    data: p.jsonb("data"),
+    // status
+    status: p.text("status").notNull(),
+    // created at
+    createdAt: p.timestamp("created_at").notNull(),
+    // updated at
     updatedAt: p.timestamp("updated_at").notNull(),
 });

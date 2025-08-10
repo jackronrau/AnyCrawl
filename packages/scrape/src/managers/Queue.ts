@@ -15,14 +15,33 @@ export interface RequestTaskOptions {
     excludeTags?: string[];
 }
 
+export interface CrawlOptions {
+    excludePaths?: string[];
+    includePaths?: string[];
+    maxDepth: number;
+    maxDiscoveryDepth: number;
+    ignoreSitemap: boolean;
+    ignoreQueryParameters: boolean;
+    limit: number;
+    crawlEntireDomain: boolean;
+    allowExternalLinks: boolean;
+    allowSubdomains: boolean;
+    delay: number;
+    scrape_options?: RequestTaskOptions;
+}
+
 export interface RequestTask {
     url: string;
     engine: EngineType;
     queueName?: QueueName;
     options?: RequestTaskOptions;
+    // New fields for crawl support
+    type?: 'scrape' | 'crawl';
+    crawlJobId?: string;
+    crawl_options?: CrawlOptions;
 }
 
-export type QueueName = "scrape" | "crawler" | string;
+export type QueueName = "scrape" | "crawl" | string;
 export class QueueManager {
     private static instance: QueueManager;
     private queues: Map<string, Queue> = new Map();
@@ -99,6 +118,16 @@ export class QueueManager {
             },
         });
         return jobId;
+    }
+
+    /**
+     * Cancel a job in a specific queue
+     * @param queueName Name of the queue
+     * @param jobId ID of the job
+     */
+    public async cancelJob(queueName: QueueName, jobId: string): Promise<void> {
+        const queue = this.getQueue(queueName);
+        await queue.remove(jobId);
     }
 
     /**

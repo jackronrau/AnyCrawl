@@ -3,23 +3,35 @@ import { z } from "zod";
 import { scrapeSchema } from "../../types/ScrapeSchema.js";
 import { QueueManager, CrawlerErrorType } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
-
+import { STATUS, completedJob, createJob, failedJob, insertJobResult } from "@anycrawl/db";
 export class ScrapeController {
     public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {
+        let jobId: string | null = null;
         try {
             // Validate request body and transform it to the job payload structure
             const jobPayload = scrapeSchema.parse(req.body);
 
-            const jobId = await QueueManager.getInstance().addJob(`scrape-${jobPayload.engine}`, jobPayload);
+            jobId = await QueueManager.getInstance().addJob(`scrape-${jobPayload.engine}`, jobPayload);
+
+            await createJob({
+                job_id: jobId,
+                job_type: 'scrape',
+                job_queue_name: `scrape-${jobPayload.engine}`,
+                url: jobPayload.url,
+                req,
+                status: STATUS.PENDING,
+            });
             // waiting job done
             const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 60_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             // Check if job failed
             if (job.status === 'failed' || job.error) {
+                const message = job.message || "The scraping task could not be completed";
+                await failedJob(jobId, message);
                 res.status(200).json({
                     success: false,
                     error: "Scrape task failed",
-                    message: job.message || "The scraping task could not be completed",
+                    message: message,
                     data: {
                         ...jobData,
                     }
@@ -34,6 +46,8 @@ export class ScrapeController {
             if (jobData.screenshot) {
                 jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/public/storage/file/${jobData.screenshot}`;
             }
+            // make job as completed and store job data
+            await completedJob(jobId);
 
             res.json({
                 success: true,
@@ -60,6 +74,9 @@ export class ScrapeController {
                 });
             } else {
                 const message = error instanceof Error ? error.message : "Unknown error occurred";
+                if (jobId) {
+                    await failedJob(jobId, message);
+                }
                 res.status(500).json({
                     success: false,
                     error: "Internal server error",

@@ -91,14 +91,10 @@ export const jobs = p.sqliteTable("jobs", {
     failed: p.integer("failed").notNull().default(0),
     // Number of credits consumed
     creditsUsed: p.integer("credits_used").notNull().default(0),
-    // job data results from job
-    jobResults: p.text("job_results", { mode: "json" }).$type<string[]>(),
     // Origin, playground or api
     origin: p.text("origin").notNull(),
     // status of job
     status: p.text("status").notNull(),
-    // job status in the queue
-    jobStatus: p.text("job_status").notNull(),
     // job success or not
     isSuccess: p.integer("is_success", { mode: "boolean" }).notNull().default(false),
     // job error message
@@ -109,3 +105,22 @@ export const jobs = p.sqliteTable("jobs", {
     updatedAt: p.integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+export const jobResults = p.sqliteTable("job_results", {
+    // Primary key with auto-incrementing ID
+    uuid: p
+        .text("uuid")
+        .primaryKey()
+        .$defaultFn(() => randomUUID()),
+    // job uuid
+    jobUuid: p.text("job_uuid").notNull().references(() => jobs.uuid),
+    // url
+    url: p.text("url").notNull(),
+    // data
+    data: p.text("data", { mode: "json" }).$type<string[]>(),
+    // status
+    status: p.text("status").notNull(),
+    // created at
+    createdAt: p.integer("created_at", { mode: "timestamp" }).notNull(),
+    // updated at
+    updatedAt: p.integer("updated_at", { mode: "timestamp" }).notNull(),
+});
