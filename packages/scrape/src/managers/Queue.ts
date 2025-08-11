@@ -19,14 +19,8 @@ export interface CrawlOptions {
     excludePaths?: string[];
     includePaths?: string[];
     maxDepth: number;
-    maxDiscoveryDepth: number;
-    ignoreSitemap: boolean;
-    ignoreQueryParameters: boolean;
     limit: number;
-    crawlEntireDomain: boolean;
-    allowExternalLinks: boolean;
-    allowSubdomains: boolean;
-    delay: number;
+    strategy: string;
     scrape_options?: RequestTaskOptions;
 }
 
@@ -34,11 +28,10 @@ export interface RequestTask {
     url: string;
     engine: EngineType;
     queueName?: QueueName;
-    options?: RequestTaskOptions;
+    options?: RequestTaskOptions | CrawlOptions;
     // New fields for crawl support
     type?: 'scrape' | 'crawl';
     crawlJobId?: string;
-    crawl_options?: CrawlOptions;
 }
 
 export type QueueName = "scrape" | "crawl" | string;

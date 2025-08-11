@@ -3,6 +3,7 @@ import { Dictionary } from "crawlee";
 import { Utils } from "../Utils.js";
 import { ConfigValidator } from "../core/ConfigValidator.js";
 import { DataExtractor } from "../core/DataExtractor.js";
+import { ExtractionError } from "../core/DataExtractor.js";
 import { JobManager } from "../core/JobManager.js";
 import { EngineConfigurator, ConfigurableEngineType } from "../core/EngineConfigurator.js";
 import {
@@ -12,16 +13,17 @@ import {
     ResponseStatus,
     CrawlerResponse
 } from "../types/crawler.js";
-import { insertJobResult } from "@anycrawl/db";
+import { insertJobResult, failedJob, completedJob } from "@anycrawl/db";
 import { JOB_RESULT_STATUS } from "../../../db/dist/map.js";
 import { EngineQueueManager } from "../managers/EngineQueue.js";
-import { randomUUID } from "node:crypto";
+import { ProgressManager } from "../managers/Progress.js";
 
 export const JOB_TYPE_SCRAPE = 'scrape';
 export const JOB_TYPE_CRAWL = 'crawl';
 
 // Re-export core types for backward compatibility
-export type { MetadataEntry, BaseContent, ExtractionError } from "../core/DataExtractor.js";
+export type { MetadataEntry, BaseContent } from "../core/DataExtractor.js";
+export { ExtractionError } from "../core/DataExtractor.js";
 export { ConfigurableEngineType as BaseEngineType } from "../core/EngineConfigurator.js";
 
 // Type definitions
@@ -272,16 +274,20 @@ export abstract class BaseEngine {
             );
         }
 
-        if (jobId) {
-            await this.jobManager.markFailed(
-                jobId,
-                queueName,
-                error.message,
-                {
-                    ...error,
-                    ...error.metadata
-                }
-            );
+        // For scrape jobs: update DB counters and mark failed
+        if (jobId && context.request.userData.type === JOB_TYPE_SCRAPE) {
+            try {
+                await this.jobManager.markFailed(
+                    jobId,
+                    queueName,
+                    error.message,
+                    {
+                        ...error,
+                        ...error.metadata
+                    }
+                );
+                await failedJob(jobId, error.message, false, { total: 1, completed: 0, failed: 1 });
+            } catch { }
         }
 
         log.error(`[${queueName}] [${jobId}] ${error.message} (${error.type})`);
@@ -305,13 +311,17 @@ export abstract class BaseEngine {
             }
         );
 
-        if (jobId) {
-            await this.jobManager.markFailed(
-                jobId,
-                queueName,
-                error.message,
-                error
-            );
+
+        if (jobId && context.request.userData.type === JOB_TYPE_SCRAPE) {
+            try {
+                await this.jobManager.markFailed(
+                    jobId,
+                    queueName,
+                    error.message,
+                    error
+                );
+                await failedJob(jobId, error.message, false, { total: 1, completed: 0, failed: 1 });
+            } catch { }
         }
 
         log.error(`[${queueName}] [${jobId}] ${error.message} (${error.type})`);
@@ -324,15 +334,29 @@ export abstract class BaseEngine {
      * Handle crawl-specific logic
      */
     protected async handleCrawlLogic(context: CrawlingContext, data: any): Promise<void> {
-        console.log('handleCrawlLogic', context.request.userData);
+
         const limit = context.request.userData.crawl_options?.limit || 10;
-        const maxDepth = context.request.userData.crawl_options?.max_depth || 10;
+        const maxDepth = context.request.userData.crawl_options?.maxDepth || 10;
         const strategy = context.request.userData.crawl_options?.strategy || 'same-domain';
-        const includePaths = context.request.userData.crawl_options?.include_paths || [];
-        const excludePaths = context.request.userData.crawl_options?.exclude_paths || [];
-        console.log('includePaths', includePaths);
-        console.log('excludePaths', excludePaths);
+        const includePaths = context.request.userData.crawl_options?.includePaths || [];
+        const excludePaths = context.request.userData.crawl_options?.excludePaths || [];
+
         try {
+            // If already finalized or enqueued reached limit, skip enqueue
+            const jobId = context.request.userData.jobId as string | undefined;
+            const pm = ProgressManager.getInstance();
+            if (jobId) {
+                try {
+                    const [enq, finalized] = await Promise.all([
+                        pm.getEnqueued(jobId),
+                        pm.isFinalized(jobId),
+                    ]);
+                    if (enq >= limit || finalized) {
+                        log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Limit reached/finalized (enqueued=${enq}, limit=${limit}), skipping enqueueLinks`);
+                        return;
+                    }
+                } catch { /* ignore */ }
+            }
             // Split include_paths into globs and regexps to support both patterns
             const includeGlobs: string[] = [];
             const includeRegexps: RegExp[] = [];
@@ -370,15 +394,14 @@ export abstract class BaseEngine {
                 userData: context.request.userData,
                 // Use 'all' strategy to crawl more broadly, or 'same-domain' for same domain
                 strategy: strategy,
-                // Optional: limit the number of links to prevent runaway crawling, minus 1 because the first request is already done.
-                limit: limit - 1,
+                // Keep original per-call limit; excess will be dropped later
+                limit: limit,
                 onSkippedRequest: ({ url, reason }) => {
                     log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Skipped (${reason}): ${url}`);
                 },
                 transformRequestFunction: (request) => {
                     const jobId = request.userData?.jobId;
                     if (!jobId) return request;
-                    console.log('request.userData', request.userData);
                     // Depth handling: inherit parent's depth and increment
                     const parentDepth = (context.request.userData as any)?.depth ?? 0;
                     const nextDepth = parentDepth + 1;
@@ -398,8 +421,19 @@ export abstract class BaseEngine {
                     });
                     request.uniqueKey = `${jobId}-${baseUnique}`;
                     return request;
-                }
+                },
             });
+            // Increase enqueued count for crawl jobs only (count only truly newly enqueued)
+            if (context.request.userData.type === JOB_TYPE_CRAWL) {
+                const jobId = context.request.userData.jobId;
+                // Count only truly newly enqueued requests (prefer enqueuedRequests if available)
+                const added = (links as any).enqueuedRequests?.length ?? (
+                    (links as any).processedRequests
+                        ? (links as any).processedRequests.filter((r: any) => !r.wasAlreadyPresent && !r.wasAlreadyHandled).length
+                        : 0
+                );
+                await ProgressManager.getInstance().incrementEnqueued(jobId, added);
+            }
             log.info(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Links enqueued: ${links.processedRequests.length}`);
         } catch (error) {
             log.error(`Error in enqueueLinks: ${error instanceof Error ? error.message : String(error)}`);
@@ -448,10 +482,7 @@ export abstract class BaseEngine {
         const checkHttpError = async (context: CrawlingContext) => {
             if (context.response) {
                 const status = this.extractResponseStatus(context.response as CrawlerResponse);
-                if (!this.isSuccessfulResponse(status)) {
-                    await this.handleFailedRequest(context, status, null, true);
-                    return true;
-                }
+                return !this.isSuccessfulResponse(status);
             }
             return false;
         }
@@ -482,7 +513,7 @@ export abstract class BaseEngine {
                 // insert job result
                 await insertJobResult(context.request.userData.jobId, context.request.url, data, JOB_RESULT_STATUS.SUCCESS);
                 // Handle crawl logic if this is a crawl job
-                console.log('context.request.userData.type', context.request.userData.type);
+
                 if (context.request.userData.type === JOB_TYPE_CRAWL) {
 
                     await this.handleCrawlLogic(context, data);
@@ -491,14 +522,14 @@ export abstract class BaseEngine {
                 data.jobId = context.request.userData.jobId;
 
             } catch (error) {
-                const { queueName, jobId } = context.request.userData;
-                if (jobId) {
+                // Only handle extraction-specific errors here; let others bubble to failedRequestHandler
+                if (error instanceof ExtractionError) {
                     await this.handleExtractionError(
                         context,
                         error as Error
                     );
+                    return;
                 }
-                this.dataExtractor.handleExtractionError(context, error as Error);
             }
             const { queueName, jobId } = context.request.userData;
 
@@ -511,8 +542,24 @@ export abstract class BaseEngine {
                 if (isHttpError) {
                     const status = this.extractResponseStatus(context.response as CrawlerResponse);
                     await this.handleFailedRequest(context, status, data);
-                } else if (context.request.userData.type === 'scrape') {
-                    await this.jobManager.markCompleted(jobId, queueName, data);
+                } else if (context.request.userData.type === JOB_TYPE_SCRAPE) {
+                    // Update counters + completed in one call
+                    try {
+                        await this.jobManager.markCompleted(jobId, queueName, data);
+                        await completedJob(jobId, true, { total: 1, completed: 1, failed: 0 });
+                    } catch { }
+                }
+                // For crawl jobs: mark page done and try finalize
+                if (context.request.userData.type === JOB_TYPE_CRAWL) {
+                    const wasSuccess = !isHttpError;
+                    // Ensure we only count once per request
+                    if (!(context.request.userData as any)._doneAccounted) {
+                        (context.request.userData as any)._doneAccounted = true;
+                        const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, wasSuccess);
+                        // Always attempt finalize; it will no-op until done === enqueued
+                        const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
+                        await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                    }
                 }
             }
         };
@@ -527,6 +574,16 @@ export abstract class BaseEngine {
             const status = this.extractResponseStatus(context.response as CrawlerResponse);
 
             await this.handleFailedRequest(context, status, error, true);
+            // For crawl jobs: also mark page done on hard failure
+            const { queueName, jobId } = context.request.userData;
+            if (jobId && context.request.userData.type === JOB_TYPE_CRAWL) {
+                if (!(context.request.userData as any)._doneAccounted) {
+                    (context.request.userData as any)._doneAccounted = true;
+                    const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, false);
+                    const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
+                    await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                }
+            }
         };
 
         return { requestHandler, failedRequestHandler };

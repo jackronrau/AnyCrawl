@@ -76,9 +76,9 @@ export const crawlSchema = baseSchema
             url: data.url,
             engine: data.engine,
             options: {
-                exclude_paths: data.exclude_paths,
-                include_paths: data.include_paths,
-                max_depth: data.max_depth,
+                excludePaths: data.exclude_paths,
+                includePaths: data.include_paths,
+                maxDepth: data.max_depth,
                 limit: data.limit,
                 strategy: data.strategy,
                 scrape_options: normalizedScrapeOptions,

@@ -117,11 +117,19 @@ export class Job {
      * Mark a job as completed
      * @param jobId - The ID of the job to mark as completed
      */
-    public static async markAsCompleted(jobId: string, isSuccess: boolean = true) {
+    public static async markAsCompleted(
+        jobId: string,
+        isSuccess: boolean = true,
+        counts?: { total?: number; completed?: number; failed?: number }
+    ) {
         const db = await getDB();
         await db.update(schemas.jobs).set({
             status: STATUS.COMPLETED,
-            isSuccess: isSuccess
+            isSuccess: isSuccess,
+            ...(counts?.total !== undefined ? { total: counts.total } : {}),
+            ...(counts?.completed !== undefined ? { completed: counts.completed } : {}),
+            ...(counts?.failed !== undefined ? { failed: counts.failed } : {}),
+            updatedAt: new Date(),
         }).where(eq(schemas.jobs.jobId, jobId));
     }
 
@@ -137,12 +145,21 @@ export class Job {
      * Mark a job as failed
      * @param jobId - The ID of the job to mark as failed
      */
-    public static async markAsFailed(jobId: string, errorMessage: string, isSuccess: boolean = false) {
+    public static async markAsFailed(
+        jobId: string,
+        errorMessage: string,
+        isSuccess: boolean = false,
+        counts?: { total?: number; completed?: number; failed?: number }
+    ) {
         const db = await getDB();
         await db.update(schemas.jobs).set({
             status: STATUS.FAILED,
             isSuccess: isSuccess,
             errorMessage: errorMessage,
+            ...(counts?.total !== undefined ? { total: counts.total } : {}),
+            ...(counts?.completed !== undefined ? { completed: counts.completed } : {}),
+            ...(counts?.failed !== undefined ? { failed: counts.failed } : {}),
+            updatedAt: new Date(),
         }).where(eq(schemas.jobs.jobId, jobId));
     }
 

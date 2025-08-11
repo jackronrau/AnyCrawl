@@ -7,6 +7,7 @@ import { Utils } from "./Utils.js";
 import { randomUUID } from "crypto";
 import { EventManager } from "./managers/Event.js";
 import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./engines/Base.js";
+import { ProgressManager } from "./managers/Progress.js";
 
 // Initialize Utils first
 const utils = Utils.getInstance();
@@ -30,22 +31,26 @@ async function runJob(job: Job) {
 
     const jobType = job.data.type || JOB_TYPE_SCRAPE;
     log.info(`Processing ${jobType} job for URL: ${job.data.url} with engine: ${engineType}`);
-    console.log('job.data.options', job.data.options);
+
     let options = job.data.options;
     // if jobType is crawl, transform options
     if (jobType === JOB_TYPE_CRAWL) {
         options = { ...job.data.options.scrape_options };
     }
-    console.log('job.data.options', options);
+    const currentJobId = job.id as string;
     const uniqueKey = await engineQueueManager.addRequest(engineType, job.data.url,
         {
-            jobId: job.id,
+            jobId: currentJobId,
             queueName: job.data.queueName,
             type: jobType,
             options: options || {},
             crawl_options: jobType === JOB_TYPE_CRAWL ? job.data.options : null,
         }
     );
+    // Seed enqueued counter for crawl jobs (the initial URL itself)
+    if (jobType === JOB_TYPE_CRAWL) {
+        await ProgressManager.getInstance().incrementEnqueued(currentJobId, 1);
+    }
     job.updateData({
         ...job.data,
         uniqueKey,
@@ -82,19 +87,7 @@ async function runJob(job: Job) {
                     });
                     await runJob(job);
                 }),
-            ),
-            // event listener for crawl jobs
-            ...AVAILABLE_ENGINES.map((engineType) => {
-                // check if db is set
-                if (process.env.ANYCRAWL_API_DB_CONNECTION) {
-                    EventManager.getInstance().getEvent(`crawl-${engineType}`).then((event) => {
-                        event.on('completed', async ({ jobId }) => {
-                        });
-                        event.on('failed', async ({ jobId }) => {
-                        });
-                    });
-                }
-            })
+            )
         ]);
 
         log.info("Worker started successfully");
