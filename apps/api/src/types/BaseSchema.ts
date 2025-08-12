@@ -5,8 +5,13 @@ import { AVAILABLE_ENGINES } from "@anycrawl/scrape/managers/EngineQueue";
 export const jsonSchemaType: z.ZodType<any> = z.lazy(() =>
     z.object({
         type: z.enum(["object", "array", "string", "number", "boolean", "null"]),
+        // For object schemas
         properties: z.record(jsonSchemaType).optional(),
         required: z.array(z.string()).optional(),
+        // For array schemas
+        items: z.union([jsonSchemaType, z.array(jsonSchemaType)]).optional(),
+        // Helpful hints for LLM extraction
+        description: z.string().optional(),
     })
 );
 

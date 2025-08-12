@@ -121,7 +121,12 @@ const getDefaultLLModelId = (): string => {
     if (whereLoadFrom() === 'config') {
         // check if defaults has config
         if (aiConfig.defaults?.DEFAULT_LLM_MODEL) {
-            const res = getEnabledModelIdByModelKey(aiConfig.defaults.DEFAULT_LLM_MODEL);
+            const configured = aiConfig.defaults.DEFAULT_LLM_MODEL;
+            // Support provider/modelId format directly
+            if (configured.includes('/')) {
+                return configured;
+            }
+            const res = getEnabledModelIdByModelKey(configured);
             if (res) {
                 return res;
             }
@@ -138,7 +143,12 @@ const getDefaultLLModelId = (): string => {
 const getExtractModelId = () => {
     if (whereLoadFrom() === 'config') {
         if (aiConfig.defaults?.DEFAULT_EXTRACT_MODEL) {
-            const res: string = getEnabledModelIdByModelKey(aiConfig.defaults.DEFAULT_EXTRACT_MODEL);
+            const configured = aiConfig.defaults.DEFAULT_EXTRACT_MODEL;
+            // Support provider/modelId format directly
+            if (configured.includes('/')) {
+                return configured;
+            }
+            const res: string = getEnabledModelIdByModelKey(configured);
             if (res) {
                 return res;
             }
