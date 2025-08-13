@@ -9,9 +9,8 @@ const aiConfig = loadAIConfig();
  * @returns The config is loaded from the config file
  */
 const whereLoadFrom = () => {
-    if (process.env.ANYCRAWL_AI_CONFIG_PATH) {
-        return 'config';
-    }
+    // If a config was loaded, treat as config mode
+    if (aiConfig) return 'config';
     return 'env';
 }
 
@@ -146,7 +145,7 @@ const getExtractModelId = () => {
             const configured = aiConfig.defaults.DEFAULT_EXTRACT_MODEL;
             // Support provider/modelId format directly
             if (configured.includes('/')) {
-                return configured;
+                return configured; // e.g. "v3/gpt-5-mini"
             }
             const res: string = getEnabledModelIdByModelKey(configured);
             if (res) {
@@ -157,6 +156,8 @@ const getExtractModelId = () => {
     } else {
         return getDefaultLLModelId();
     }
+    // Fallback for config mode without explicit DEFAULT_EXTRACT_MODEL
+    return getDefaultLLModelId();
 }
 
 export { aiConfig, modelsConfig, getEnabledModelIdByModelKey, getAvailableModels, getDefaultLLModelId, getEnabledProviderModels, getExtractModelId };

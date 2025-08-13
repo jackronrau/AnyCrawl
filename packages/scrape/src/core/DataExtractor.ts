@@ -6,7 +6,7 @@ import { Utils } from "../Utils.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
 import { convert } from "html-to-text"
 import * as cheerio from "cheerio";
-import { LLMExtract } from "@anycrawl/ai";
+import { LLMExtract, getExtractModelId } from "@anycrawl/ai";
 
 export interface MetadataEntry {
     name: string;
@@ -288,18 +288,34 @@ export class DataExtractor {
             // json_options, need to extract data from markdown
             // TODO: consider to extract data from HTML, combine with tag info may be better
             if (options.json_options) {
-                const modelId = process.env.DEFAULT_EXTRACT_MODEL || process.env.DEFAULT_LLM_MODEL || "gpt-4o";
-                if (!modelId || typeof modelId !== "string") {
-                    throw new Error("json_options.modelId is required and must be a string");
-                }
+                // Resolve extract model id via config-aware helper
+                const modelId = getExtractModelId();
+                log.info(`[extract] Resolved extract model: ${modelId}`);
                 formatTasks.json = (async () => {
                     const markdown = await (formatTasks.markdown ?? Promise.resolve(baseContent.markdown));
                     const llmExtractAgent = this.getLLMExtractAgent(modelId);
+                    const extractStart = Date.now();
                     const result = await llmExtractAgent.perform(markdown, options.json_options.schema ?? null, {
                         prompt: options.json_options.user_prompt ?? null,
                         schemaName: options.json_options.schema_name ?? null,
                         schemaDescription: options.json_options.schema_description ?? null,
                     });
+                    const extractDuration = Date.now() - extractStart;
+                    // Structured logging for token usage and tracing
+                    const jobId = context.request.userData?.jobId ?? 'unknown';
+                    const queueName = context.request.userData?.queueName ?? 'unknown';
+                    const reqKey = (context.request as any).id || context.request.uniqueKey || 'unknown';
+                    const tokens = result.tokens || { input: 0, output: 0, total: 0 };
+                    const cost = typeof result.cost === 'number' ? result.cost : 0;
+
+                    log.info(`[${queueName}] [${jobId}] [extract] model=${modelId} url=${context.request.url} reqKey=${reqKey} tokens(input=${tokens.input}, output=${tokens.output}, total=${tokens.total}) cost=$${cost.toFixed(6)} duration=${extractDuration}ms`);
+                    // Print provider raw usage as comparison if available
+                    const rawUsage = (result as any).usage ?? null;
+                    if (rawUsage) {
+                        try {
+                            log.info(`[${queueName}] [${jobId}] [extract:raw-usage] ${JSON.stringify(rawUsage)}`);
+                        } catch { }
+                    }
                     return result.data;
                 })();
             }

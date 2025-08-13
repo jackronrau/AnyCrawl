@@ -24,7 +24,7 @@
         "express": "^5.1.0",
         "morgan": "^1.10.0",
         "response-time": "^2.3.3",
-        "zod": "^3.25.49"
+        "zod": "^3.25.76"
     },
     "devDependencies": {
         "@anycrawl/typescript-config": "workspace:*",

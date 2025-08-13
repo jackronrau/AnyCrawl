@@ -20,13 +20,14 @@
         }
     },
     "dependencies": {
-        "@ai-sdk/openai": "2.0.0-beta.2",
-        "@ai-sdk/openai-compatible": "1.0.0-beta.2",
+        "@ai-sdk/openai": "^2.0.11",
+        "@ai-sdk/openai-compatible": "^1.0.6",
+        "@openrouter/ai-sdk-provider": "^1.1.2",
         "@anycrawl/libs": "workspace:*",
-        "ai": "^5.0.0-beta",
+        "ai": "^5.0.0",
         "json-schema-to-zod": "^2.6.1",
         "tiktoken": "^1.0.21",
-        "zod": "^3.25.49"
+        "zod": "^3.25.76"
     },
     "devDependencies": {
         "@anycrawl/typescript-config": "workspace:*",
