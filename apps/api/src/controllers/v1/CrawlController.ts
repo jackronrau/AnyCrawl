@@ -4,8 +4,9 @@ import { crawlSchema } from "../../types/CrawlSchema.js";
 import { QueueManager, CrawlerErrorType, RequestTask } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
 import { randomUUID } from "crypto";
-import { cancelJob, createJob, failedJob, getJob } from "@anycrawl/db";
+import { cancelJob, createJob, failedJob, getJob, getJobResultsPaginated, getJobResultsCount, STATUS } from "@anycrawl/db";
 import { CrawlSchemaInput } from "../../types/CrawlSchema.js";
+import { log } from "@anycrawl/libs";
 
 export class CrawlController {
     /**
@@ -122,14 +123,82 @@ export class CrawlController {
                 credits_used: job.creditsUsed ?? 0,
                 total: job.total ?? 0,
                 completed: job.completed ?? 0,
-                failed: job.failed ?? 0,
-                data: job.jobResults ?? []
+                failed: job.failed ?? 0
             };
 
             res.json({
                 success: true,
                 message: 'Job status retrieved successfully',
                 data: jobStatus
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error occurred";
+            res.status(500).json({
+                success: false,
+                error: "Internal server error",
+                message: message
+            });
+        }
+    };
+
+    /**
+     * Get crawl job results
+     * Supports skip via query param `skip`
+     */
+    public results = async (req: RequestWithAuth, res: Response): Promise<void> => {
+        try {
+            const { jobId } = req.params;
+            // validate uuid
+            const parseResult = CrawlSchemaInput.safeParse({ uuid: jobId });
+            if (!parseResult.success) {
+                res.status(400).json({
+                    success: false,
+                    error: "Invalid job ID",
+                    message: "Job ID must be a valid UUID"
+                });
+                return;
+            }
+
+            if (!jobId) {
+                res.status(400).json({
+                    success: false,
+                    error: "Invalid job ID",
+                    message: "Job ID must be provided"
+                });
+                return;
+            }
+
+            const job = await getJob(jobId);
+            if (!job) {
+                res.status(400).json({
+                    success: false,
+                    error: "Not found",
+                    message: "Job not found"
+                });
+                return;
+            }
+
+            const rawSkip = Array.isArray(req.query.skip) ? req.query.skip[0] : req.query.skip;
+            const skip = Math.max(0, Number(rawSkip ?? 0) || 0);
+            const MAX_PER_PAGE = 100;
+            const [total, results] = await Promise.all([
+                getJobResultsCount(jobId),
+                getJobResultsPaginated(jobId, skip, MAX_PER_PAGE),
+            ]);
+
+            const hasMore = skip + results.length < total;
+            const nextSkip = hasMore ? skip + results.length : undefined;
+            const base = process.env.ANYCRAWL_DOMAIN || `${req.protocol}://${req.get('host')}`;
+            const nextUrl = hasMore ? `${base}/v1/crawl/${jobId}/results?skip=${nextSkip}` : undefined;
+
+            res.json({
+                success: true,
+                status: job.status,
+                total: job.total ?? total,
+                completed: job.completed ?? 0,
+                creditsUsed: job.creditsUsed ?? 0,
+                next: nextUrl,
+                data: results.map((r: any) => r.data ?? r),
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error occurred";
@@ -167,7 +236,7 @@ export class CrawlController {
                 });
                 return;
             }
-            const job = await cancelJob(jobId);
+            const job = await getJob(jobId);
             if (!job) {
                 res.status(404).json({
                     success: false,
@@ -176,9 +245,25 @@ export class CrawlController {
                 });
                 return;
             }
+            // Disallow cancelling finished jobs
+            if ([STATUS.COMPLETED, STATUS.FAILED, STATUS.CANCELLED].includes(job.status)) {
+                res.status(409).json({
+                    success: false,
+                    error: "Job already finished",
+                    message: "Finished jobs cannot be cancelled"
+                });
+                return;
+            }
 
-            // cancel job in the bullmq queue
-            await QueueManager.getInstance().cancelJob(job.jobQueueName, jobId);
+            await cancelJob(jobId);
+
+            // cancel job in the bullmq queue (best-effort)
+            try {
+                await QueueManager.getInstance().cancelJob(job.jobQueueName, jobId);
+            } catch (e) {
+                // swallow queue cancellation error; DB status already set to cancelled and
+                // engines will stop on cancel flag
+            }
 
             res.status(200).json({
                 success: true,
@@ -189,6 +274,7 @@ export class CrawlController {
                 }
             });
         } catch (error) {
+            log.error(JSON.stringify(error))
             const message = error instanceof Error ? error.message : "Unknown error occurred";
             res.status(500).json({
                 success: false,

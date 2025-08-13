@@ -347,12 +347,13 @@ export abstract class BaseEngine {
             const pm = ProgressManager.getInstance();
             if (jobId) {
                 try {
-                    const [enq, finalized] = await Promise.all([
+                    const [enq, finalized, cancelled] = await Promise.all([
                         pm.getEnqueued(jobId),
                         pm.isFinalized(jobId),
+                        pm.isCancelled(jobId),
                     ]);
-                    if (enq >= limit || finalized) {
-                        log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Limit reached/finalized (enqueued=${enq}, limit=${limit}), skipping enqueueLinks`);
+                    if (enq >= limit || finalized || cancelled) {
+                        log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Limit reached/finalized/cancelled (enqueued=${enq}, limit=${limit}), skipping enqueueLinks`);
                         return;
                     }
                 } catch { /* ignore */ }
@@ -488,6 +489,17 @@ export abstract class BaseEngine {
         }
 
         const requestHandler = async (context: CrawlingContext) => {
+            // Short-circuit if crawl job is cancelled
+            try {
+                const userData: any = context.request.userData || {};
+                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
+                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
+                    if (cancelled) {
+                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping request ${context.request.url}`);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
             // check if http status code is 400 or higher
             const isHttpError = await checkHttpError(context);
             let data = null;
@@ -565,6 +577,17 @@ export abstract class BaseEngine {
         };
 
         const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
+            // Short-circuit if crawl job is cancelled
+            try {
+                const userData: any = context.request.userData || {};
+                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
+                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
+                    if (cancelled) {
+                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping failed handler for ${context.request.url}`);
+                        return;
+                    }
+                }
+            } catch { /* ignore */ }
             // Run custom handler if provided
             if (customFailedRequestHandler) {
                 await customFailedRequestHandler(context, error);

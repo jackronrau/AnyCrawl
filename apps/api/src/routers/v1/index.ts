@@ -14,7 +14,8 @@ router.post("/search", controllerWrapper(searchController.handle));
 
 // Crawl routes
 router.post("/crawl", controllerWrapper(crawlController.start));
-router.get("/crawl/:jobId", controllerWrapper(crawlController.status));
+router.get("/crawl/:jobId/status", controllerWrapper(crawlController.status));
+router.get("/crawl/:jobId", controllerWrapper(crawlController.results));
 router.delete("/crawl/:jobId", controllerWrapper(crawlController.cancel));
 
 // Error handler

@@ -12,6 +12,8 @@ export const failedJob = Job.markAsFailed;
 export const completedJob = Job.markAsCompleted;
 export const insertJobResult = Job.insertJobResult;
 export const getJobResults = Job.getJobResults;
+export const getJobResultsPaginated = Job.getJobResultsPaginated;
+export const getJobResultsCount = Job.getJobResultsCount;
 
 export { eq, and, gt, gte, sql, getDB, schemas, STATUS, Job };
 export type { CreateJobParams };

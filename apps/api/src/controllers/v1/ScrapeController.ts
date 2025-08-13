@@ -21,6 +21,8 @@ export class ScrapeController {
                 req,
                 status: STATUS.PENDING,
             });
+            // Propagate jobId for downstream middlewares (e.g., credits logging)
+            req.jobId = jobId;
             // waiting job done
             const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 60_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;

@@ -1,4 +1,5 @@
-import { getDB, schemas, eq, STATUS } from "../index.js";
+import { asc } from "drizzle-orm";
+import { getDB, schemas, eq, STATUS, sql } from "../index.js";
 import { JOB_RESULT_STATUS, JobResultStatus } from "../map.js";
 
 export interface CreateJobParams {
@@ -91,7 +92,7 @@ export class Job {
      */
     public static async cancel(job_id: string) {
         const db = await getDB();
-        const job = await this.get(job_id);
+        const job = await Job.get(job_id);
         if (job) {
             await db.update(schemas.jobs).set({ status: STATUS.CANCELLED }).where(eq(schemas.jobs.jobId, job_id));
             return job;
@@ -204,5 +205,47 @@ export class Job {
         }
 
         return await db.select().from(schemas.jobResults).where(eq(schemas.jobResults.jobUuid, job.uuid));
+    }
+
+    /**
+     * Get paginated results for a job
+     * @param jobId - The job ID
+     * @param skip - Number of records to skip
+     * @param limit - Max number of records to return
+     */
+    public static async getJobResultsPaginated(jobId: string, skip: number, limit: number) {
+        const db = await getDB();
+
+        const job = await Job.get(jobId);
+        if (!job) {
+            throw new Error(`Job with ID ${jobId} not found`);
+        }
+
+        return await db
+            .select()
+            .from(schemas.jobResults)
+            .where(eq(schemas.jobResults.jobUuid, job.uuid))
+            .orderBy(asc(schemas.jobResults.createdAt))
+            .limit(limit)
+            .offset(skip);
+    }
+
+    /**
+     * Get total count of results for a job
+     */
+    public static async getJobResultsCount(jobId: string): Promise<number> {
+        const db = await getDB();
+
+        const job = await Job.get(jobId);
+        if (!job) {
+            throw new Error(`Job with ID ${jobId} not found`);
+        }
+
+        const rows = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(schemas.jobResults)
+            .where(eq(schemas.jobResults.jobUuid, job.uuid));
+        const count = rows?.[0]?.count as unknown as number;
+        return Number(count || 0);
     }
 }

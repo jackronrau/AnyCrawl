@@ -11,6 +11,7 @@ const REDIS_FIELDS = {
     STARTED_AT: "started_at",
     FINISHED_AT: "finished_at",
     FINALIZED: "finalized",
+    CANCELLED: "cancelled",
 } as const;
 
 /**
@@ -74,6 +75,16 @@ export class ProgressManager {
         }
     }
 
+    public async isCancelled(jobId: string): Promise<boolean> {
+        const key = this.key(jobId);
+        try {
+            const value = await this.redis.hget(key, REDIS_FIELDS.CANCELLED);
+            return String(value ?? '0') === '1';
+        } catch {
+            return false;
+        }
+    }
+
     async incrementEnqueued(jobId: string, incrementBy: number): Promise<void> {
         if (incrementBy <= 0) return;
         const key = this.key(jobId);
@@ -90,6 +101,17 @@ export class ProgressManager {
         wasSuccess: boolean
     ): Promise<{ done: number; enqueued: number }> {
         const key = this.key(jobId);
+        // If already finalized, do not increment counters nor deduct credits again
+        try {
+            const finalized = await this.isFinalized(jobId);
+            if (finalized) {
+                const [enqueued, done] = await Promise.all([
+                    this.getEnqueued(jobId),
+                    this.getDone(jobId),
+                ]);
+                return { done, enqueued };
+            }
+        } catch { /* ignore and continue */ }
         const res = await this.redis
             .multi()
             .hincrby(key, REDIS_FIELDS.DONE, 1)
@@ -105,6 +127,7 @@ export class ProgressManager {
             const db = await getDB();
             const updates: any = {
                 total: sql`${schemas.jobs.total} + 1`,
+                creditsUsed: sql`${schemas.jobs.creditsUsed} + 1`,
                 updatedAt: new Date(),
             };
             if (wasSuccess) {
@@ -113,6 +136,38 @@ export class ProgressManager {
                 updates.failed = sql`${schemas.jobs.failed} + 1`;
             }
             await db.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
+
+            // Deduct 1 credit from the API key balance per processed URL when credits are enabled
+            if (process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true') {
+                try {
+                    const [job] = await db
+                        .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName })
+                        .from(schemas.jobs)
+                        .where(eq(schemas.jobs.jobId, jobId));
+                    const apiKeyId = job?.apiKey as string | undefined;
+                    if (apiKeyId) {
+                        await db
+                            .update(schemas.apiKey)
+                            .set({
+                                credits: sql`${schemas.apiKey.credits} - 1`,
+                                lastUsedAt: new Date(),
+                            })
+                            .where(eq(schemas.apiKey.uuid, apiKeyId));
+
+                        // Check remaining credits; if exhausted, finalize the job immediately
+                        const [user] = await db
+                            .select({ credits: schemas.apiKey.credits })
+                            .from(schemas.apiKey)
+                            .where(eq(schemas.apiKey.uuid, apiKeyId));
+                        const remaining = user?.credits ?? 0;
+                        if (remaining <= 0 && job?.queueName) {
+                            try {
+                                await this.tryFinalize(jobId, job.queueName, {}, done);
+                            } catch { /* ignore finalize race */ }
+                        }
+                    }
+                } catch { /* ignore deduction errors */ }
+            }
         } catch { }
         return { done, enqueued };
     }
@@ -182,6 +237,25 @@ export class ProgressManager {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Mark job as cancelled and finalized immediately.
+     * Prevent further enqueueing and allow engines to short-circuit processing.
+     */
+    async cancel(jobId: string): Promise<void> {
+        const key = this.key(jobId);
+        const now = new Date().toISOString();
+        try {
+            await this.redis
+                .multi()
+                .hset(key, REDIS_FIELDS.CANCELLED, '1')
+                .hset(key, REDIS_FIELDS.FINALIZED, '1')
+                .hset(key, REDIS_FIELDS.FINISHED_AT, now)
+                .exec();
+        } catch {
+            // ignore
+        }
     }
 }
 

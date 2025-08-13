@@ -30,9 +30,13 @@ export const deductCreditsMiddleware = async (
         }
         // Only deduct credits for successful requests
         if (res.statusCode >= 200 && res.statusCode < 400) {
-            // if req.creditsUsed not set, set it to 1.
-            req.creditsUsed = req.creditsUsed || 1;
+            // if req.creditsUsed not set, set it to 1. Preserve explicit 0.
+            req.creditsUsed = req.creditsUsed ?? 1;
             log.info(`Deducting credits for user ${userUuid} with credits used: ${req.creditsUsed}`);
+            if (req.creditsUsed == 0) {
+                next();
+                return;
+            }
             try {
                 const db = await getDB();
 
@@ -53,6 +57,18 @@ export const deductCreditsMiddleware = async (
                 // Update the auth object with the new credit balance
                 if (req.auth) {
                     req.auth.credits = updatedUser.credits;
+                }
+
+                // If this request is associated with a job, update jobs.credits_used accordingly
+                try {
+                    if (req.jobId) {
+                        await db.update(schemas.jobs).set({
+                            creditsUsed: sql`${schemas.jobs.creditsUsed} + ${req.creditsUsed!}`,
+                            updatedAt: new Date(),
+                        }).where(eq(schemas.jobs.jobId, req.jobId));
+                    }
+                } catch (error) {
+                    log.error(`Failed to update credits for job ${req.jobId || 'unknown'}: ${error}`);
                 }
 
                 log.info(`Deducted ${req.creditsUsed} credits from user ${userUuid}. Remaining credits: ${updatedUser.credits}`);
