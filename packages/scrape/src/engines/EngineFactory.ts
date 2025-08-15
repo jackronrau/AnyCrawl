@@ -2,7 +2,7 @@ import { RequestQueueV2, LaunchContext, Dictionary, log } from "crawlee";
 import { CheerioEngine } from "./Cheerio.js";
 import { PlaywrightEngine } from "./Playwright.js";
 import { PuppeteerEngine } from "./Puppeteer.js";
-import { EngineOptions, CrawlingContext } from "./Base.js";
+import type { EngineOptions } from "./Base.js";
 import proxyConfiguration from "../managers/Proxy.js";
 
 export type Engine = PlaywrightEngine | PuppeteerEngine | CheerioEngine;
