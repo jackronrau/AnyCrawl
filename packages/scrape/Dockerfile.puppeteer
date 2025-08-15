@@ -44,7 +44,7 @@ COPY --chown=myuser:myuser --from=build /usr/src/app/packages/libs/dist /usr/src
 COPY --chown=myuser:myuser --from=build /usr/src/app/packages/db/dist /usr/src/app/packages/db/dist
 COPY --chown=myuser:myuser --from=build /usr/src/app/packages/ai/dist /usr/src/app/packages/ai/dist
 COPY --chown=myuser:myuser --from=build /usr/src/app/packages/scrape/package.json /usr/src/app/packages/scrape/package.json
-COPY --chown=myuser:myuser --from=build /usr/src/app/packages/libs/package.json
+COPY --chown=myuser:myuser --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/libs/package.json
 COPY --chown=myuser:myuser --from=build /usr/src/app/packages/db/package.json /usr/src/app/packages/db/package.json
 COPY --chown=myuser:myuser --from=build /usr/src/app/packages/ai/package.json /usr/src/app/packages/ai/package.json
 
