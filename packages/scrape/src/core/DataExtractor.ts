@@ -1,8 +1,7 @@
 import { log } from "@anycrawl/libs"
 import { htmlToMarkdown } from "@anycrawl/libs/html-to-markdown";
 import { HTMLTransformer, ExtractionOptions, TransformOptions } from "./transformers/HTMLTransformer.js";
-import { CrawlingContext } from "../engines/Base.js";
-import { Utils } from "../Utils.js";
+import type { CrawlingContext } from "../engines/Base.js";
 import { ScreenshotTransformer } from "./transformers/ScreenshotTransformer.js";
 import { convert } from "html-to-text"
 import * as cheerio from "cheerio";

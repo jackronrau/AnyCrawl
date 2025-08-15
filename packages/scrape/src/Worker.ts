@@ -1,13 +1,14 @@
 import { WorkerManager } from "./managers/Worker.js";
 import { QueueManager } from "./managers/Queue.js";
 import { Job } from "bullmq";
-import { EngineQueueManager, AVAILABLE_ENGINES, ALLOWED_ENGINES } from "./managers/EngineQueue.js";
+import { EngineQueueManager, AVAILABLE_ENGINES } from "./managers/EngineQueue.js";
 import { log } from "crawlee";
 import { Utils } from "./Utils.js";
 import { randomUUID } from "crypto";
 import { EventManager } from "./managers/Event.js";
 import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./engines/Base.js";
 import { ProgressManager } from "./managers/Progress.js";
+import { ALLOWED_ENGINES } from "./constants.js";
 
 // Initialize Utils first
 const utils = Utils.getInstance();

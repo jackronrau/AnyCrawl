@@ -2,7 +2,7 @@ import { Job, Queue, Worker } from "bullmq";
 import { log } from "crawlee";
 import { randomUUID } from "node:crypto";
 import { Utils } from "../Utils.js";
-import { EngineType } from "./EngineQueue.js";
+import type { EngineType } from "./EngineQueue.js";
 
 export interface RequestTaskOptions {
     headless?: boolean;

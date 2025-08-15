@@ -15,7 +15,6 @@ import {
 } from "../types/crawler.js";
 import { insertJobResult, failedJob, completedJob } from "@anycrawl/db";
 import { JOB_RESULT_STATUS } from "../../../db/dist/map.js";
-import { EngineQueueManager } from "../managers/EngineQueue.js";
 import { ProgressManager } from "../managers/Progress.js";
 
 export const JOB_TYPE_SCRAPE = 'scrape';
