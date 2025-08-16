@@ -46,6 +46,17 @@ export class ScrapeController {
 
             // Set credits used for this scrape request (1 credit per scrape)
             req.creditsUsed = 1;
+            // Extra credits when structured extraction is requested via json_options
+            try {
+                const extractJsonCredits = Number.parseInt(process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0", 10);
+                // jobPayload.options carries normalized options from schema
+                const hasJsonOptions = Boolean((jobPayload as any)?.options?.json_options);
+                if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
+                    req.creditsUsed += extractJsonCredits;
+                }
+            } catch {
+                // ignore credit calc errors; default to base cost
+            }
 
             // Add domain prefix to screenshot path if it exists
             if (jobData.screenshot) {
