@@ -659,6 +659,16 @@ export abstract class BaseEngine {
     }
 
     /**
+     * Get the underlying crawler engine instance
+     */
+    public getEngine(): any {
+        if (!this.engine) {
+            throw new Error("Engine not initialized. Call init() first.");
+        }
+        return this.engine;
+    }
+
+    /**
      * Abstract method for engine initialization
      */
     abstract init(): Promise<void>;

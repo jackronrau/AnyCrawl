@@ -3,7 +3,6 @@ import { join } from "node:path";
 import IORedis from "ioredis";
 import { Job } from "bullmq";
 import type { EngineOptions } from "./engines/Base.js";
-import { EngineQueueManager } from "./managers/EngineQueue.js";
 
 /**
  * Utility class for storing global instances
@@ -94,13 +93,14 @@ export class Utils {
                 options: {},
             },
         });
+        const { EngineQueueManager } = await import("./managers/EngineQueue.js");
         const engine = await EngineQueueManager.getInstance().createEngine(
             job.data.engine,
             queue,
             options
         );
         await engine.init();
-        await engine.getEngine().run();
+        await engine.run();
         await queue.drop();
     }
 
