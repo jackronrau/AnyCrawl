@@ -122,12 +122,34 @@ export class ProgressManager {
         const enqueued = Number(res?.[2]?.[1] ?? 0);
         const done = Number(res?.[3]?.[1] ?? 0);
 
-        // Increment DB counters per page (best-effort, atomic arithmetic)
+        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits
         try {
             const db = await getDB();
+            // Fetch job row ONCE for cost calculation, deduction and potential finalize
+            let perPageCost = 1;
+            let queueNameForFinalize: string | undefined;
+            let apiKeyForDeduction: string | undefined;
+            try {
+                const [jobRow] = await db
+                    .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName, payload: schemas.jobs.payload })
+                    .from(schemas.jobs)
+                    .where(eq(schemas.jobs.jobId, jobId));
+                apiKeyForDeduction = jobRow?.apiKey as string | undefined;
+                queueNameForFinalize = jobRow?.queueName as string | undefined;
+                const payload: any = jobRow?.payload ?? {};
+                const hasJsonOptions = Boolean(
+                    payload?.json_options || payload?.options?.scrape_options?.json_options
+                );
+                const extractJsonCreditsRaw = process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0";
+                const extractJsonCredits = Number.parseInt(extractJsonCreditsRaw, 10);
+                if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
+                    perPageCost += extractJsonCredits;
+                }
+            } catch { /* ignore: default perPageCost remains 1 */ }
+
             const updates: any = {
                 total: sql`${schemas.jobs.total} + 1`,
-                creditsUsed: sql`${schemas.jobs.creditsUsed} + 1`,
+                creditsUsed: sql`${schemas.jobs.creditsUsed} + ${perPageCost}`,
                 updatedAt: new Date(),
             };
             if (wasSuccess) {
@@ -137,34 +159,27 @@ export class ProgressManager {
             }
             await db.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
 
-            // Deduct 1 credit from the API key balance per processed URL when credits are enabled
-            if (process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true') {
+            // Deduct credits from the API key balance per processed URL when credits are enabled
+            if (process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
                 try {
-                    const [job] = await db
-                        .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName })
-                        .from(schemas.jobs)
-                        .where(eq(schemas.jobs.jobId, jobId));
-                    const apiKeyId = job?.apiKey as string | undefined;
-                    if (apiKeyId) {
-                        await db
-                            .update(schemas.apiKey)
-                            .set({
-                                credits: sql`${schemas.apiKey.credits} - 1`,
-                                lastUsedAt: new Date(),
-                            })
-                            .where(eq(schemas.apiKey.uuid, apiKeyId));
+                    await db
+                        .update(schemas.apiKey)
+                        .set({
+                            credits: sql`${schemas.apiKey.credits} - ${perPageCost}`,
+                            lastUsedAt: new Date(),
+                        })
+                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
 
-                        // Check remaining credits; if exhausted, finalize the job immediately
-                        const [user] = await db
-                            .select({ credits: schemas.apiKey.credits })
-                            .from(schemas.apiKey)
-                            .where(eq(schemas.apiKey.uuid, apiKeyId));
-                        const remaining = user?.credits ?? 0;
-                        if (remaining <= 0 && job?.queueName) {
-                            try {
-                                await this.tryFinalize(jobId, job.queueName, {}, done);
-                            } catch { /* ignore finalize race */ }
-                        }
+                    // Check remaining credits; if exhausted, finalize the job immediately
+                    const [user] = await db
+                        .select({ credits: schemas.apiKey.credits })
+                        .from(schemas.apiKey)
+                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
+                    const remaining = user?.credits ?? 0;
+                    if (remaining <= 0 && queueNameForFinalize) {
+                        try {
+                            await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
+                        } catch { /* ignore finalize race */ }
                     }
                 } catch { /* ignore deduction errors */ }
             }

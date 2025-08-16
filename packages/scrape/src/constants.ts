@@ -11,5 +11,3 @@ export const SCRAPE_FORMATS = [
     "rawHtml",
     "json",
 ] as const;
-
-
