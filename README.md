@@ -131,7 +131,7 @@ curl -X POST https://api.anycrawl.dev/v1/crawl \
 | strategy      | enum                | Scope: `all`, `same-domain`, `same-hostname`, `same-origin`                                 | same-domain   |
 | include_paths | array<string>       | Only crawl paths matching these patterns                                                    | _(none)_      |
 | exclude_paths | array<string>       | Skip paths matching these patterns                                                          | _(none)_      |
-| scrape_options| object              | Per-page scrape options (formats, timeout, json extraction, etc.), same as Scrape options   | _(inherited)_ |
+| scrape_options| object              | Per-page scrape options (formats, timeout, json extraction, etc.), same as Scrape options   | _(none)_ |
 
 More parameters and endpoints: see [Request Parameters](https://docs.anycrawl.dev/en/general/scrape#request-parameters).
 
