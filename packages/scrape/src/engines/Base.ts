@@ -16,9 +16,7 @@ import {
 import { insertJobResult, failedJob, completedJob } from "@anycrawl/db";
 import { JOB_RESULT_STATUS } from "../../../db/dist/map.js";
 import { ProgressManager } from "../managers/Progress.js";
-
-export const JOB_TYPE_SCRAPE = 'scrape';
-export const JOB_TYPE_CRAWL = 'crawl';
+import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "../constants.js";
 
 // Re-export core types for backward compatibility
 export type { MetadataEntry, BaseContent } from "../core/DataExtractor.js";

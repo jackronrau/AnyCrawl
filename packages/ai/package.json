@@ -17,6 +17,16 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "default": "./dist/index.js"
+        },
+        "./utils/config.js": {
+            "types": "./dist/utils/config.d.ts",
+            "import": "./dist/utils/config.js",
+            "default": "./dist/utils/config.js"
+        },
+        "./utils/helper.js": {
+            "types": "./dist/utils/helper.d.ts",
+            "import": "./dist/utils/helper.js",
+            "default": "./dist/utils/helper.js"
         }
     },
     "dependencies": {
