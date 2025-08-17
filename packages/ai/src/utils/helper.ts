@@ -1,8 +1,14 @@
 import { modelsConfig } from './models-config.js';
-import { loadAIConfig } from './config.js';
+import { ensureAIConfigLoaded, getAIConfig } from './config.js';
+import { log } from '@anycrawl/libs';
 import { ConfigModelDetail } from './types.js';
 
-const aiConfig = loadAIConfig();
+let aiConfig: any = getAIConfig();
+
+// Allow external callers (e.g., scrape worker) to refresh config after ensureAIConfigLoaded()
+export const refreshAIConfig = (): void => {
+    aiConfig = getAIConfig();
+}
 
 /**
  * Check if the config is loaded from the config file
@@ -161,3 +167,21 @@ const getExtractModelId = () => {
 }
 
 export { aiConfig, modelsConfig, getEnabledModelIdByModelKey, getAvailableModels, getDefaultLLModelId, getEnabledProviderModels, getExtractModelId };
+
+// Optional logging helper: summarize AI config state using existing getters
+export function logAIStatus(): void {
+    try {
+        const pathEnv = process.env.ANYCRAWL_AI_CONFIG_PATH;
+        const isHttp = pathEnv ? /^https?:\/\//i.test(pathEnv) : false;
+        if (aiConfig) {
+            log.info(`[ai] config loaded from ${isHttp ? 'URL' : 'file'}: ${pathEnv}`);
+        } else {
+            log.info(`[ai] config not set (env mode)`);
+        }
+        const enabled = getEnabledProviderModels();
+        const providers = Array.from(new Set(enabled.map(e => e.provider)));
+        log.info(`[ai] providers ready: ${providers.length > 0 ? providers.join(', ') : 'none'}`);
+        const defaultModelId = getDefaultLLModelId();
+        if (defaultModelId) log.info(`[ai] default model: ${defaultModelId}`);
+    } catch { /* ignore logging errors */ }
+}
