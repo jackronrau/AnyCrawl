@@ -9,12 +9,23 @@ import { EventManager } from "./managers/Event.js";
 import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./engines/Base.js";
 import { ProgressManager } from "./managers/Progress.js";
 import { ALLOWED_ENGINES } from "./constants.js";
+import { ensureAIConfigLoaded } from "@anycrawl/ai";
+import { refreshAIConfig, getDefaultLLModelId, getEnabledProviderModels } from "@anycrawl/ai";
 
 // Initialize Utils first
 const utils = Utils.getInstance();
 await utils.initializeKeyValueStore();
 
 // Initialize queues and engines
+// Ensure AI config is loaded (URL/file) before engines start
+try {
+    await ensureAIConfigLoaded();
+    refreshAIConfig();
+    const providers = Array.from(new Set(getEnabledProviderModels().map(p => p.provider)));
+    const defaultModel = getDefaultLLModelId();
+    log.info(`[ai] providers ready: ${providers.length > 0 ? providers.join(', ') : 'none'}`);
+    if (defaultModel) log.info(`[ai] default model: ${defaultModel}`);
+} catch { }
 log.info("Initializing queues and engines...");
 const engineQueueManager = EngineQueueManager.getInstance();
 await engineQueueManager.initializeQueues();
