@@ -198,7 +198,7 @@ export class CrawlController {
                 completed: job.completed ?? 0,
                 creditsUsed: job.creditsUsed ?? 0,
                 next: nextUrl,
-                data: results.map((r: any) => r.data ?? r),
+                data: results.map((r: any) => ({ ...(r.data ?? {}), url: r.url })),
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error occurred";
