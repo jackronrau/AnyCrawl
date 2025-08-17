@@ -284,9 +284,9 @@ export class DataExtractor {
                     return result;
                 })();
             }
-            // json_options, need to extract data from markdown
+            // json_options, need to extract data from markdown. and formats must include json
             // TODO: consider to extract data from HTML, combine with tag info may be better
-            if (options.json_options) {
+            if (options.json_options && formats.includes("json")) {
                 // Resolve extract model id via config-aware helper
                 const modelId = getExtractModelId();
                 log.info(`[extract] Resolved extract model: ${modelId}`);

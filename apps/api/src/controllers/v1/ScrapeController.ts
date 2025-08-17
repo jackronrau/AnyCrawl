@@ -49,8 +49,8 @@ export class ScrapeController {
             // Extra credits when structured extraction is requested via json_options
             try {
                 const extractJsonCredits = Number.parseInt(process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0", 10);
-                // jobPayload.options carries normalized options from schema
-                const hasJsonOptions = Boolean((jobPayload as any)?.options?.json_options);
+                // jobPayload.options carries normalized options from schema, and must formats include json
+                const hasJsonOptions = Boolean((jobPayload as any)?.options?.json_options) && (jobPayload as any)?.options?.formats?.includes("json");
                 if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
                     req.creditsUsed += extractJsonCredits;
                 }
