@@ -1,16 +1,13 @@
 import { WorkerManager } from "./managers/Worker.js";
 import { QueueManager } from "./managers/Queue.js";
 import { Job } from "bullmq";
-import { EngineQueueManager, AVAILABLE_ENGINES } from "./managers/EngineQueue.js";
 import { log } from "crawlee";
 import { Utils } from "./Utils.js";
-import { randomUUID } from "crypto";
-import { EventManager } from "./managers/Event.js";
-import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./engines/Base.js";
+// Removed unused imports to keep startup lean
 import { ProgressManager } from "./managers/Progress.js";
-import { ALLOWED_ENGINES } from "./constants.js";
-import { ensureAIConfigLoaded } from "@anycrawl/ai";
-import { refreshAIConfig, getDefaultLLModelId, getEnabledProviderModels } from "@anycrawl/ai";
+import { ALLOWED_ENGINES, JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "./constants.js";
+import { ensureAIConfigLoaded } from "@anycrawl/ai/utils/config.js";
+import { refreshAIConfig, getDefaultLLModelId, getEnabledProviderModels } from "@anycrawl/ai/utils/helper.js";
 
 // Initialize Utils first
 const utils = Utils.getInstance();
@@ -25,8 +22,19 @@ try {
     const defaultModel = getDefaultLLModelId();
     log.info(`[ai] providers ready: ${providers.length > 0 ? providers.join(', ') : 'none'}`);
     if (defaultModel) log.info(`[ai] default model: ${defaultModel}`);
+    // Validate extract model provider is actually registered
+    try {
+        const { getLLM, getExtractModelId } = await import("@anycrawl/ai");
+        const extractId = getExtractModelId();
+        getLLM(extractId);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log.warning(`[ai] validation: ${msg}. Check provider credentials (apiKey/baseURL) for the configured provider.`);
+    }
 } catch { }
 log.info("Initializing queues and engines...");
+// Dynamically import after AI config is ready to ensure @anycrawl/ai is initialized with config
+const { EngineQueueManager, AVAILABLE_ENGINES } = await import("./managers/EngineQueue.js");
 const engineQueueManager = EngineQueueManager.getInstance();
 await engineQueueManager.initializeQueues();
 await engineQueueManager.initializeEngines();
@@ -81,7 +89,7 @@ async function runJob(job: Job) {
         log.info("Starting worker...");
         await Promise.all([
             // Workers for scrape jobs
-            ...AVAILABLE_ENGINES.map((engineType) =>
+            ...AVAILABLE_ENGINES.map((engineType: any) =>
                 WorkerManager.getInstance().getWorker(`scrape-${engineType}`, async (job: Job) => {
                     job.updateData({
                         ...job.data,
@@ -91,7 +99,7 @@ async function runJob(job: Job) {
                 })
             ),
             // Workers for crawl jobs
-            ...AVAILABLE_ENGINES.map((engineType) =>
+            ...AVAILABLE_ENGINES.map((engineType: any) =>
                 WorkerManager.getInstance().getWorker(`crawl-${engineType}`, async (job: Job) => {
                     job.updateData({
                         ...job.data,
