@@ -139,7 +139,7 @@ export class ProgressManager {
                 const payload: any = jobRow?.payload ?? {};
                 const hasJsonOptions = Boolean(
                     payload?.json_options || payload?.options?.scrape_options?.json_options
-                );
+                ) && payload?.options?.formats?.includes("json");
                 const extractJsonCreditsRaw = process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0";
                 const extractJsonCredits = Number.parseInt(extractJsonCreditsRaw, 10);
                 if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
