@@ -65,6 +65,11 @@ export class ScrapeController {
             if (jobData.screenshot) {
                 jobData.screenshot = `${process.env.ANYCRAWL_DOMAIN}/v1/public/storage/file/${jobData.screenshot}`;
             }
+
+            if (jobData['screenshot@fullPage']) {
+                jobData['screenshot@fullPage'] = `${process.env.ANYCRAWL_DOMAIN}/v1/public/storage/file/${jobData['screenshot@fullPage']}`;
+            }
+
             // Job completion is handled in worker/engine; no extra completedJob call here
 
             res.json({
