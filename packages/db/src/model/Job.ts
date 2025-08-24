@@ -1,6 +1,7 @@
 import { asc } from "drizzle-orm";
 import { getDB, schemas, eq, STATUS, sql } from "../index.js";
 import { JOB_RESULT_STATUS, JobResultStatus } from "../map.js";
+import { log } from "@anycrawl/libs/log";
 
 export interface CreateJobParams {
     job_id: string;
@@ -72,6 +73,10 @@ export class Job {
             createdAt: new Date(),
             updatedAt: new Date(),
         });
+
+        try {
+            log.info(`[DB][Job] Created job_id=${job_id} type=${job_type} queue=${job_queue_name} origin=${origin} apiKey=${api_key_id ?? "none"}`);
+        } catch { }
     }
 
     /**
@@ -95,8 +100,14 @@ export class Job {
         const job = await Job.get(job_id);
         if (job) {
             await db.update(schemas.jobs).set({ status: STATUS.CANCELLED }).where(eq(schemas.jobs.jobId, job_id));
+            try {
+                log.info(`[DB][Job] Cancelled job_id=${job_id} status=${STATUS.CANCELLED}`);
+            } catch { }
             return job;
         }
+        try {
+            log.warning(`[DB][Job] Cancel attempt for nonexistent job_id=${job_id}`);
+        } catch { }
         return null;
     }
 
@@ -112,6 +123,9 @@ export class Job {
         } else {
             await db.update(schemas.jobs).set({ status: status }).where(eq(schemas.jobs.jobId, job_id));
         }
+        try {
+            log.info(`[DB][Job] Updated status job_id=${job_id} status=${status}${isSuccess !== null ? ` isSuccess=${isSuccess}` : ""}`);
+        } catch { }
     }
 
     /**
@@ -132,6 +146,11 @@ export class Job {
             ...(counts?.failed !== undefined ? { failed: counts.failed } : {}),
             updatedAt: new Date(),
         }).where(eq(schemas.jobs.jobId, jobId));
+
+        try {
+            const countsInfo = `total=${counts?.total ?? "-"} completed=${counts?.completed ?? "-"} failed=${counts?.failed ?? "-"}`;
+            log.info(`[DB][Job] Marked completed job_id=${jobId} isSuccess=${isSuccess} ${countsInfo}`);
+        } catch { }
     }
 
     /**
@@ -162,6 +181,11 @@ export class Job {
             ...(counts?.failed !== undefined ? { failed: counts.failed } : {}),
             updatedAt: new Date(),
         }).where(eq(schemas.jobs.jobId, jobId));
+
+        try {
+            const countsInfo = `total=${counts?.total ?? "-"} completed=${counts?.completed ?? "-"} failed=${counts?.failed ?? "-"}`;
+            log.error(`[DB][Job] Marked failed job_id=${jobId} message="${errorMessage}" ${countsInfo}`);
+        } catch { }
     }
 
     /**
@@ -188,6 +212,11 @@ export class Job {
             createdAt: new Date(),
             updatedAt: new Date(),
         });
+
+        try {
+            const dataType = data === null || data === undefined ? "null" : Array.isArray(data) ? `array(len=${data.length})` : typeof data;
+            log.info(`[DB][JobResult] Inserted result job_id=${jobId} url=${url} status=${status} dataType=${dataType}`);
+        } catch { }
     }
 
     /**
@@ -247,5 +276,23 @@ export class Job {
             .where(eq(schemas.jobResults.jobUuid, job.uuid));
         const count = rows?.[0]?.count as unknown as number;
         return Number(count || 0);
+    }
+
+    /**
+     * Update job counts without changing status
+     */
+    public static async updateCounts(jobId: string, counts: { total?: number; completed?: number; failed?: number }) {
+        const db = await getDB();
+        await db.update(schemas.jobs).set({
+            ...(counts.total !== undefined ? { total: counts.total } : {}),
+            ...(counts.completed !== undefined ? { completed: counts.completed } : {}),
+            ...(counts.failed !== undefined ? { failed: counts.failed } : {}),
+            updatedAt: new Date(),
+        }).where(eq(schemas.jobs.jobId, jobId));
+
+        try {
+            const countsInfo = `total=${counts.total ?? "-"} completed=${counts.completed ?? "-"} failed=${counts.failed ?? "-"}`;
+            log.info(`[DB][Job] Updated counts job_id=${jobId} ${countsInfo}`);
+        } catch { }
     }
 }
