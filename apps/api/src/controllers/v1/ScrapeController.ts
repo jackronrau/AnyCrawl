@@ -34,6 +34,8 @@ export class ScrapeController {
                 const message = job.message || "The scraping task could not be completed";
                 await QueueManager.getInstance().cancelJob(`scrape-${engineName}`, jobId);
                 await failedJob(jobId, message, false, { total: 1, completed: 0, failed: 1 });
+                // Ensure no credits are deducted for failed scrape
+                req.creditsUsed = 0;
                 res.status(200).json({
                     success: false,
                     error: "Scrape task failed",
@@ -77,6 +79,8 @@ export class ScrapeController {
                     code: err.code,
                 }));
                 const message = error.errors.map((err) => err.message).join(", ");
+                // Ensure no credits are deducted for validation failure
+                req.creditsUsed = 0;
                 res.status(400).json({
                     success: false,
                     error: "Validation error",
@@ -101,6 +105,8 @@ export class ScrapeController {
                         await failedJob(jobId, message, false, { total: 1, completed: 0, failed: 1 });
                     } catch { /* ignore DB errors to still return response */ }
                 }
+                // Ensure no credits are deducted for internal error
+                req.creditsUsed = 0;
                 res.status(500).json({
                     success: false,
                     error: "Internal server error",
