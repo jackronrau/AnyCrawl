@@ -1,6 +1,6 @@
 import { eq, and, gt, gte, sql } from "drizzle-orm";
 import { getDB, schemas } from "./db/index.js";
-import { STATUS } from "./map.js";
+import { STATUS, JOB_RESULT_STATUS } from "./map.js";
 import { Job, CreateJobParams } from "./model/Job.js";
 
 // Backward compatibility functions
@@ -14,6 +14,7 @@ export const insertJobResult = Job.insertJobResult;
 export const getJobResults = Job.getJobResults;
 export const getJobResultsPaginated = Job.getJobResultsPaginated;
 export const getJobResultsCount = Job.getJobResultsCount;
+export const updateJobCounts = Job.updateCounts;
 
-export { eq, and, gt, gte, sql, getDB, schemas, STATUS, Job };
+export { eq, and, gt, gte, sql, getDB, schemas, STATUS, JOB_RESULT_STATUS, Job };
 export type { CreateJobParams };

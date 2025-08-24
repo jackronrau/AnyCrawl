@@ -191,6 +191,20 @@ export class CrawlController {
             const base = process.env.ANYCRAWL_DOMAIN || `${req.protocol}://${req.get('host')}`;
             const nextUrl = hasMore ? `${base}/v1/crawl/${jobId}/results?skip=${nextSkip}` : undefined;
 
+            // Prefix screenshot paths with public domain route (align with ScrapeController behavior)
+            const dataWithPrefixedScreenshots = results.map((r: any) => {
+                const d: any = { ...(r.data ?? {}) };
+                if (d && typeof d === 'object') {
+                    if (d.screenshot) {
+                        d.screenshot = `${base}/v1/public/storage/file/${d.screenshot}`;
+                    }
+                    if (d['screenshot@fullPage']) {
+                        d['screenshot@fullPage'] = `${base}/v1/public/storage/file/${d['screenshot@fullPage']}`;
+                    }
+                }
+                return { ...d, url: r.url };
+            });
+
             res.json({
                 success: true,
                 status: job.status,
@@ -198,7 +212,7 @@ export class CrawlController {
                 completed: job.completed ?? 0,
                 creditsUsed: job.creditsUsed ?? 0,
                 next: nextUrl,
-                data: results.map((r: any) => ({ ...(r.data ?? {}), url: r.url })),
+                data: dataWithPrefixedScreenshots,
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error occurred";

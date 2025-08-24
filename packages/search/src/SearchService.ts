@@ -11,12 +11,14 @@ export class SearchService {
     private pendingRequests: Map<string, number>;
     private crawler: Engine | null = null;
     private searchQueue: any | null = null;
+    private requestsToOnPage: Map<string, (page: number, results: SearchResult[], uniqueKey: string, success: boolean) => void>;
 
     constructor() {
         this.engines = new Map();
         this.requestsToResponses = new Map();
         this.partialResults = new Map();
         this.pendingRequests = new Map();
+        this.requestsToOnPage = new Map();
     }
 
     private createEngine(name: string): SearchEngine {
@@ -65,6 +67,12 @@ export class SearchService {
                             const results = await engine.parse(html, request);
                             log.info(`Parsed results: ${results.length}`);
 
+                            const pageNumber = request.userData.page ?? 1;
+
+                            // Per-page callback
+                            const onPageCb = this.requestsToOnPage.get(uniqueKey);
+                            if (onPageCb) onPageCb(pageNumber, results, uniqueKey, true);
+
                             // Accumulate results
                             const currentResults = this.partialResults.get(uniqueKey) || [];
                             this.partialResults.set(uniqueKey, [...currentResults, ...results]);
@@ -83,6 +91,7 @@ export class SearchService {
                                     this.requestsToResponses.delete(uniqueKey);
                                     this.partialResults.delete(uniqueKey);
                                     this.pendingRequests.delete(uniqueKey);
+                                    this.requestsToOnPage.delete(uniqueKey);
                                 }
                             }
                         } catch (error) {
@@ -96,6 +105,12 @@ export class SearchService {
                             const { request, error } = context as any;
                             const uniqueKey = request.userData.uniqueKey;
                             log.error(`Failed to process ${request.url}:`, error);
+
+                            const pageNumber = request.userData.page ?? 1;
+
+                            // Per-page callback (failure)
+                            const onPageCb = this.requestsToOnPage.get(uniqueKey);
+                            if (onPageCb) onPageCb(pageNumber, [], uniqueKey, false);
 
                             // Decrement pending requests even for failed requests
                             const pendingCount = this.pendingRequests.get(uniqueKey) || 0;
@@ -113,6 +128,7 @@ export class SearchService {
                                     this.requestsToResponses.delete(uniqueKey);
                                     this.partialResults.delete(uniqueKey);
                                     this.pendingRequests.delete(uniqueKey);
+                                    this.requestsToOnPage.delete(uniqueKey);
                                 }
                             }
                         } catch (error) {
@@ -128,7 +144,11 @@ export class SearchService {
         }
     }
 
-    async search(engineName: string, options: SearchOptions): Promise<SearchResult[]> {
+    async search(
+        engineName: string,
+        options: SearchOptions,
+        onPage?: (page: number, results: SearchResult[], uniqueKey: string, success: boolean) => void,
+    ): Promise<SearchResult[]> {
         log.info("Search called with options:", options);
         return new Promise(async (resolve) => {
             const uniqueKey = randomUUID();
@@ -136,6 +156,7 @@ export class SearchService {
             this.requestsToResponses.set(uniqueKey, resolve);
             this.partialResults.set(uniqueKey, []);
             this.pendingRequests.set(uniqueKey, options.pages ?? 1);
+            if (onPage) this.requestsToOnPage.set(uniqueKey, onPage);
 
             await this.executeSearch(engineName, options, uniqueKey);
         });
@@ -205,4 +226,5 @@ export class SearchService {
             }
         }
     }
+
 }

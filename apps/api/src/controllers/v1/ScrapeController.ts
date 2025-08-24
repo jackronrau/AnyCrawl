@@ -11,12 +11,14 @@ export class ScrapeController {
         try {
             // Validate request body and transform it to the job payload structure
             const jobPayload = scrapeSchema.parse(req.body);
+            // Keep engine name available for error paths (e.g., timeout) before awaiting
+            engineName = jobPayload.engine;
 
-            jobId = await QueueManager.getInstance().addJob(`scrape-${jobPayload.engine}`, jobPayload);
+            jobId = await QueueManager.getInstance().addJob(`scrape-${engineName}`, jobPayload);
             await createJob({
                 job_id: jobId,
                 job_type: 'scrape',
-                job_queue_name: `scrape-${jobPayload.engine}`,
+                job_queue_name: `scrape-${engineName}`,
                 url: jobPayload.url,
                 req,
                 status: STATUS.PENDING,
@@ -24,14 +26,13 @@ export class ScrapeController {
             // Propagate jobId for downstream middlewares (e.g., credits logging)
             req.jobId = jobId;
             // waiting job done
-            const job = await QueueManager.getInstance().waitJobDone(`scrape-${jobPayload.engine}`, jobId, jobPayload.options.timeout || 60_000);
+            const job = await QueueManager.getInstance().waitJobDone(`scrape-${engineName}`, jobId, jobPayload.options.timeout || 60_000);
             const { uniqueKey, queueName, options, engine, ...jobData } = job;
             // for failed job to cancel the job in the queue
-            engineName = engine;
             // Check if job failed
             if (job.status === 'failed' || job.error) {
                 const message = job.message || "The scraping task could not be completed";
-                await QueueManager.getInstance().cancelJob(`scrape-${jobPayload.engine}`, jobId);
+                await QueueManager.getInstance().cancelJob(`scrape-${engineName}`, jobId);
                 await failedJob(jobId, message, false, { total: 1, completed: 0, failed: 1 });
                 res.status(200).json({
                     success: false,
@@ -90,8 +91,15 @@ export class ScrapeController {
             } else {
                 const message = error instanceof Error ? error.message : "Unknown error occurred";
                 if (jobId) {
-                    await QueueManager.getInstance().cancelJob(`scrape-${engineName}`, jobId);
-                    await failedJob(jobId, message, false, { total: 1, completed: 0, failed: 1 });
+                    // Best-effort cancel; do not block failed marking if cancel throws
+                    try {
+                        if (engineName) {
+                            await QueueManager.getInstance().cancelJob(`scrape-${engineName}`, jobId);
+                        }
+                    } catch { /* ignore cancel errors */ }
+                    try {
+                        await failedJob(jobId, message, false, { total: 1, completed: 0, failed: 1 });
+                    } catch { /* ignore DB errors to still return response */ }
                 }
                 res.status(500).json({
                     success: false,
