@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1-beta.8] - 2025-08-25
+
+### Fixed
+
+- Fixed credit deduction logic in ProgressManager to ensure credits are only deducted on successful scrapes, improving error handling and credit management
+
+## [0.0.1-beta.7] - 2025-08-25
+
+### Fixed
+
+- Updated screenshot handling in ScrapeController and DataExtractor to fix full-page screenshots with proper path handling
+- Fixed credit deduction to ensure no credits are deducted for failed scrapes, validation errors, and internal errors in ScrapeController
+
+## [0.0.1-beta.6] - 2025-08-24
+
+### Added
+
+- Enhanced job management in ScrapeController and SearchController with improved status tracking
+- Implemented per-page result handling and logging for job status updates in SearchService
+- Added screenshot path prefixing with public domain route in CrawlController for improved URL handling
+
+## [0.0.1-beta.5] - 2025-08-18
+
+### Added
+
+- Enhanced JSON extraction logic by ensuring formats include JSON in ScrapeController, DataExtractor, and ProgressManager
+- Updated data mapping in CrawlController to include URL in results for enhanced data structure and better result organization
+
+## [0.0.1-beta.4] - 2025-08-18
+
+### Changed
+
+- Added utility module exports in package.json for better package organization
+- Introduced job type constants in constants.ts for improved type safety and consistency
+- Enhanced dynamic import handling for engine management and cleaned up unused imports in Worker.ts
+
+## [0.0.1-beta.3] - 2025-08-17
+
+### Changed
+
+- Enhanced AI configuration management by introducing async loading and caching capabilities
+- Updated LLMExtract tests to utilize new config methods for better testing coverage
+- Added comprehensive logging for AI config status and provider validation
+
+### Changed
+
+- Improved Docker image versioning by removing hardcoded GITHUB_TAG and updating tag extraction method in docker-image.yml
+
+## [0.0.1-beta.2] - 2025-08-17
+
+### Added
+
+- Added new configuration variable for JSON extraction credit management in .env.example
+
+### Changed
+
+- Enhanced credit deduction logic for structured extraction with support for JSON extraction credits
+- Updated project documentation with improved README.md structure and clarity
+- Enhanced LLM extraction section with better parameter descriptions and usage examples
+- Improved project overview and usage documentation for better developer experience
+
 ## [0.0.1-beta.1] - 2025-08-16
 
 ### Added
