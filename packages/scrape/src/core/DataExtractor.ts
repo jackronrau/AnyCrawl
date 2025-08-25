@@ -276,8 +276,9 @@ export class DataExtractor {
                 formatTasks.text = Promise.resolve(convert(baseContent.rawHtml));
             }
             // Screenshot task is also concurrent
-            if (page && typeof context.saveSnapshot === 'function' && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
-                formatTasks.screenshot = (async () => {
+            if (page && (formats.includes("screenshot") || formats.includes("screenshot@fullPage"))) {
+                const screenshotKey = formats.includes("screenshot@fullPage") ? "screenshot@fullPage" : "screenshot";
+                formatTasks[screenshotKey] = (async () => {
                     log.debug("[extractData] Start screenshot capture (concurrent)");
                     const result = await this.screenshotTransformer.captureAndStoreScreenshot(context, page, formats);
                     log.debug("[extractData] Finished screenshot capture");
