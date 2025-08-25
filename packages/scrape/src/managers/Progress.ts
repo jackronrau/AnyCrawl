@@ -122,7 +122,7 @@ export class ProgressManager {
         const enqueued = Number(res?.[2]?.[1] ?? 0);
         const done = Number(res?.[3]?.[1] ?? 0);
 
-        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits
+        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits (only on success)
         try {
             const db = await getDB();
             // Fetch job row ONCE for cost calculation, deduction and potential finalize
@@ -149,18 +149,18 @@ export class ProgressManager {
 
             const updates: any = {
                 total: sql`${schemas.jobs.total} + 1`,
-                creditsUsed: sql`${schemas.jobs.creditsUsed} + ${perPageCost}`,
                 updatedAt: new Date(),
             };
             if (wasSuccess) {
                 updates.completed = sql`${schemas.jobs.completed} + 1`;
+                updates.creditsUsed = sql`${schemas.jobs.creditsUsed} + ${perPageCost}`;
             } else {
                 updates.failed = sql`${schemas.jobs.failed} + 1`;
             }
             await db.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
 
             // Deduct credits from the API key balance per processed URL when credits are enabled
-            if (process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
+            if (wasSuccess && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
                 try {
                     await db
                         .update(schemas.apiKey)
