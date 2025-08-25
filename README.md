@@ -3,6 +3,9 @@
 <img src="https://anycrawl.dev/logo.svg" alt="AnyCrawl" height="100">
 <h1>
   AnyCrawl
+  <p align="center">
+    <img src="https://img.shields.io/badge/any4ai-AnyCrawl-6d47b8" alt="AnyCrawl" />
+  </p>
 </h1>
 
 <img src="https://img.shields.io/badge/⚡-Fast-blue" alt="Fast"/>
@@ -22,8 +25,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/Redis-DC3
-  2D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis"/>
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis"/>
 </p>
 
 </div>
@@ -67,7 +69,6 @@ curl -X POST https://api.anycrawl.dev/v1/scrape \
 
 ```
 
-
 #### Parameters
 
 | Parameter | Type              | Description                                                                                                                                                                       | Default  |
@@ -77,7 +78,6 @@ curl -X POST https://api.anycrawl.dev/v1/scrape \
 | proxy     | string            | Proxy URL for the request. Supports HTTP and SOCKS proxies. Format: `http://[username]:[password]@proxy:port`                                                                     | _(none)_ |
 
 More parameters: see [Request Parameters](https://docs.anycrawl.dev/en/general/scrape#request-parameters).
-
 
 #### LLM Extraction
 
@@ -122,19 +122,18 @@ curl -X POST https://api.anycrawl.dev/v1/crawl \
 
 #### Parameters
 
-| Parameter     | Type                | Description                                                                                 | Default       |
-| ------------- | ------------------- | ------------------------------------------------------------------------------------------- | ------------- |
-| url           | string (required)   | Starting URL to crawl                                                                       | -             |
-| engine        | string              | Crawling engine. Options: `cheerio`, `playwright`, `puppeteer`                              | cheerio       |
-| max_depth     | number              | Max depth from the start URL                                                                | 10            |
-| limit         | number              | Max number of pages to crawl                                                                | 100           |
-| strategy      | enum                | Scope: `all`, `same-domain`, `same-hostname`, `same-origin`                                 | same-domain   |
-| include_paths | array<string>       | Only crawl paths matching these patterns                                                    | _(none)_      |
-| exclude_paths | array<string>       | Skip paths matching these patterns                                                          | _(none)_      |
-| scrape_options| object              | Per-page scrape options (formats, timeout, json extraction, etc.), same as Scrape options   | _(none)_ |
+| Parameter      | Type              | Description                                                                               | Default     |
+| -------------- | ----------------- | ----------------------------------------------------------------------------------------- | ----------- |
+| url            | string (required) | Starting URL to crawl                                                                     | -           |
+| engine         | string            | Crawling engine. Options: `cheerio`, `playwright`, `puppeteer`                            | cheerio     |
+| max_depth      | number            | Max depth from the start URL                                                              | 10          |
+| limit          | number            | Max number of pages to crawl                                                              | 100         |
+| strategy       | enum              | Scope: `all`, `same-domain`, `same-hostname`, `same-origin`                               | same-domain |
+| include_paths  | array<string>     | Only crawl paths matching these patterns                                                  | _(none)_    |
+| exclude_paths  | array<string>     | Skip paths matching these patterns                                                        | _(none)_    |
+| scrape_options | object            | Per-page scrape options (formats, timeout, json extraction, etc.), same as Scrape options | _(none)_    |
 
 More parameters and endpoints: see [Request Parameters](https://docs.anycrawl.dev/en/general/scrape#request-parameters).
-
 
 ### Search Engine Results (SERP)
 
