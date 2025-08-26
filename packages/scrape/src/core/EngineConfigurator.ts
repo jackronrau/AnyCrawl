@@ -1,5 +1,8 @@
 import { AD_DOMAINS, log } from "@anycrawl/libs";
 import { BrowserName } from "crawlee";
+import { ProgressManager } from "../managers/Progress.js";
+import { JOB_TYPE_CRAWL } from "../constants.js";
+import { CrawlLimitReachedError } from "../errors/index.js";
 
 export enum ConfigurableEngineType {
     CHEERIO = 'cheerio',
@@ -52,6 +55,50 @@ export class EngineConfigurator {
     }
 
     private static configureBrowserEngine(options: any, engineType: ConfigurableEngineType): void {
+        // Limit filter hook - abort requests that exceed crawl limit
+        const limitFilterHook = async ({ request }: any) => {
+            try {
+                const userData: any = request.userData || {};
+                const jobId = userData?.jobId;
+
+                // Only apply limit filtering to crawl jobs
+                if (jobId && userData.type === JOB_TYPE_CRAWL) {
+                    const pm = ProgressManager.getInstance();
+                    const limit = userData.crawl_options?.limit || 10;
+
+                    // Get current progress
+                    const [enqueued, done, finalized, cancelled] = await Promise.all([
+                        pm.getEnqueued(jobId),
+                        pm.getDone(jobId),
+                        pm.isFinalized(jobId),
+                        pm.isCancelled(jobId),
+                    ]);
+
+                    // Check if we should abort this request
+                    // Only abort if:
+                    // 1. Job is finalized or cancelled
+                    // 2. We've already completed enough pages (done >= limit)
+                    if (finalized || cancelled || done >= limit) {
+                        const reason = finalized ? 'finalized' :
+                            cancelled ? 'cancelled' :
+                                done >= limit ? 'limit reached' :
+                                    'excessive queuing';
+
+                        log.info(`[${userData.queueName}] [${jobId}] Skipping page - ${reason} (processed=${done}, enqueued=${enqueued}, limit=${limit})`);
+                        // Throw specialized error to abort the navigation and avoid proxy consumption
+                        throw new CrawlLimitReachedError(jobId, reason, limit, done);
+                    }
+                }
+            } catch (error) {
+                // Re-throw CrawlLimitReachedError to abort navigation
+                if (error instanceof CrawlLimitReachedError) {
+                    throw error;
+                }
+                // Log and ignore other errors to avoid breaking navigation
+                log.error(`Limit filter hook error: ${error}`);
+            }
+        };
+
         // Ad blocking configuration
         const adBlockingHook = async ({ page }: any) => {
             const shouldBlock = (url: string) => AD_DOMAINS.some(domain => url.includes(domain));
@@ -150,7 +197,7 @@ export class EngineConfigurator {
 
         // Merge with existing preNavigationHooks
         const existingHooks = options.preNavigationHooks || [];
-        options.preNavigationHooks = [adBlockingHook, requestTimeoutHook, authenticationHook, ...existingHooks];
+        options.preNavigationHooks = [limitFilterHook, adBlockingHook, requestTimeoutHook, authenticationHook, ...existingHooks];
 
         // Apply headless configuration from environment
         if (options.headless === undefined) {
@@ -177,6 +224,12 @@ export class EngineConfigurator {
         // Configure how errors are evaluated
         options.errorHandler = async (context: any, error: Error) => {
             log.debug(`Error handler triggered: ${error.message}`);
+
+            // Handle CrawlLimitReachedError specially - log as INFO instead of ERROR
+            if (error instanceof CrawlLimitReachedError) {
+                log.info(`[EXPECTED] Crawl limit reached for job ${error.jobId}: ${error.reason} - continuing with processed pages`);
+                return false; // Don't retry, don't mark as failed
+            }
 
             // Check error type and determine retry strategy
             const errorMessage = error.message || '';
