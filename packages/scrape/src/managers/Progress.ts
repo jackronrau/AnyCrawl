@@ -2,6 +2,7 @@ import IORedis from "ioredis";
 import { Utils } from "../Utils.js";
 import { JobManager } from "../core/JobManager.js";
 import { completedJob, getDB, schemas, eq, sql } from "@anycrawl/db";
+import { log } from "@anycrawl/libs";
 
 const REDIS_FIELDS = {
     ENQUEUED: "enqueued",
@@ -162,26 +163,25 @@ export class ProgressManager {
             // Deduct credits from the API key balance per processed URL when credits are enabled
             if (wasSuccess && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
                 try {
-                    await db
+                    // Update credits and get remaining balance in a single query
+                    const [updatedUser] = await db
                         .update(schemas.apiKey)
                         .set({
                             credits: sql`${schemas.apiKey.credits} - ${perPageCost}`,
                             lastUsedAt: new Date(),
                         })
-                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
+                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction))
+                        .returning({ credits: schemas.apiKey.credits });
 
-                    // Check remaining credits; if exhausted, finalize the job immediately
-                    const [user] = await db
-                        .select({ credits: schemas.apiKey.credits })
-                        .from(schemas.apiKey)
-                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
-                    const remaining = user?.credits ?? 0;
+                    const remaining = updatedUser?.credits ?? 0;
                     if (remaining <= 0 && queueNameForFinalize) {
                         try {
                             await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
                         } catch { /* ignore finalize race */ }
                     }
-                } catch { /* ignore deduction errors */ }
+                } catch {
+                    log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
+                }
             }
         } catch { }
         return { done, enqueued };

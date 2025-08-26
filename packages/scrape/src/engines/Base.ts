@@ -486,17 +486,35 @@ export abstract class BaseEngine {
         }
 
         const requestHandler = async (context: CrawlingContext) => {
-            // Short-circuit if crawl job is cancelled
+            // Progress check hook - prevent navigation if job limit reached or cancelled
             try {
                 const userData: any = context.request.userData || {};
-                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
-                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
-                    if (cancelled) {
-                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping request ${context.request.url}`);
-                        return;
+                const jobId = userData?.jobId;
+                if (jobId && userData.type === JOB_TYPE_CRAWL) {
+                    const pm = ProgressManager.getInstance();
+                    const [processed, finalized, cancelled] = await Promise.all([
+                        pm.getDone(jobId),
+                        pm.isFinalized(jobId),
+                        pm.isCancelled(jobId),
+                    ]);
+
+                    const limit = userData.crawl_options?.limit || 10;
+
+                    if (processed >= limit || finalized || cancelled) {
+                        log.info(`[${userData.queueName}] [${jobId}] Skipping navigation - limit reached/finalized/cancelled (processed=${processed}, limit=${limit}, finalized=${finalized}, cancelled=${cancelled})`);
+
+                        // Return false to skip this navigation without throwing an error
+                        return false;
                     }
                 }
-            } catch { /* ignore */ }
+            } catch (error) {
+                if (error instanceof Error && error.message.startsWith('JOB_STOPPED:')) {
+                    throw error; // Re-throw job control errors
+                }
+                // Ignore Redis connection issues, etc.
+                const jobId = context.request.userData?.jobId;
+                log.debug(`Progress check failed for job ${jobId}: ${error}`);
+            }
             // check if http status code is 400 or higher
             const isHttpError = await checkHttpError(context);
             let data = null;
@@ -574,17 +592,35 @@ export abstract class BaseEngine {
         };
 
         const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
-            // Short-circuit if crawl job is cancelled
+            // Progress check hook - prevent handling if job limit reached or cancelled
             try {
                 const userData: any = context.request.userData || {};
-                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
-                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
-                    if (cancelled) {
-                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping failed handler for ${context.request.url}`);
+                const jobId = userData?.jobId;
+                if (jobId && userData.type === JOB_TYPE_CRAWL) {
+                    const pm = ProgressManager.getInstance();
+                    const [processed, finalized, cancelled] = await Promise.all([
+                        pm.getDone(jobId),
+                        pm.isFinalized(jobId),
+                        pm.isCancelled(jobId),
+                    ]);
+
+                    const limit = userData.crawl_options?.limit || 10;
+
+                    if (processed >= limit || finalized || cancelled) {
+                        log.info(`[${userData.queueName}] [${jobId}] Skipping failed handler - limit reached/finalized/cancelled (processed=${processed}, limit=${limit}, finalized=${finalized}, cancelled=${cancelled})`);
+
+                        // Return early to skip processing this failed request
                         return;
                     }
                 }
-            } catch { /* ignore */ }
+            } catch (checkError) {
+                if (checkError instanceof Error && checkError.message.startsWith('JOB_STOPPED:')) {
+                    throw checkError; // Re-throw job control errors
+                }
+                // Ignore Redis connection issues, etc.
+                const jobId = context.request.userData?.jobId;
+                log.debug(`Progress check failed for job ${jobId}: ${checkError}`);
+            }
             // Run custom handler if provided
             if (customFailedRequestHandler) {
                 await customFailedRequestHandler(context, error);
