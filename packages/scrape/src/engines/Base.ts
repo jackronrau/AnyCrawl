@@ -17,6 +17,7 @@ import { insertJobResult, failedJob, completedJob } from "@anycrawl/db";
 import { JOB_RESULT_STATUS } from "../../../db/dist/map.js";
 import { ProgressManager } from "../managers/Progress.js";
 import { JOB_TYPE_CRAWL, JOB_TYPE_SCRAPE } from "../constants.js";
+import { CrawlLimitReachedError } from "../errors/index.js";
 
 // Re-export core types for backward compatibility
 export type { MetadataEntry, BaseContent } from "../core/DataExtractor.js";
@@ -382,7 +383,6 @@ export abstract class BaseEngine {
                 exclude.push(...(excludePaths as string[]));
                 exclude.push(context.request.url);
             }
-
             // enqueueLinks is context-aware and doesn't need explicit requestQueue
             const links = await context.enqueueLinks({
                 ...(includeGlobs.length > 0 ? { globs: includeGlobs } : {}),
@@ -392,7 +392,7 @@ export abstract class BaseEngine {
                 userData: context.request.userData,
                 // Use 'all' strategy to crawl more broadly, or 'same-domain' for same domain
                 strategy: strategy,
-                // Keep original per-call limit; excess will be dropped later
+                // Keep original limit to ensure we don't under-enqueue
                 limit: limit,
                 onSkippedRequest: ({ url, reason }) => {
                     log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Skipped (${reason}): ${url}`);
@@ -400,6 +400,7 @@ export abstract class BaseEngine {
                 transformRequestFunction: (request) => {
                     const jobId = request.userData?.jobId;
                     if (!jobId) return request;
+
                     // Depth handling: inherit parent's depth and increment
                     const parentDepth = (context.request.userData as any)?.depth ?? 0;
                     const nextDepth = parentDepth + 1;
@@ -486,17 +487,8 @@ export abstract class BaseEngine {
         }
 
         const requestHandler = async (context: CrawlingContext) => {
-            // Short-circuit if crawl job is cancelled
-            try {
-                const userData: any = context.request.userData || {};
-                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
-                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
-                    if (cancelled) {
-                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping request ${context.request.url}`);
-                        return;
-                    }
-                }
-            } catch { /* ignore */ }
+            // Note: Progress checking is now handled by limitFilterHook in preNavigationHooks
+            // This eliminates duplicate logic and ensures consistent behavior
             // check if http status code is 400 or higher
             const isHttpError = await checkHttpError(context);
             let data = null;
@@ -574,17 +566,15 @@ export abstract class BaseEngine {
         };
 
         const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
-            // Short-circuit if crawl job is cancelled
-            try {
-                const userData: any = context.request.userData || {};
-                if (userData.type === JOB_TYPE_CRAWL && userData.jobId) {
-                    const cancelled = await ProgressManager.getInstance().isCancelled(userData.jobId);
-                    if (cancelled) {
-                        log.info(`[${userData.queueName}] [${userData.jobId}] Job cancelled, skipping failed handler for ${context.request.url}`);
-                        return;
-                    }
-                }
-            } catch { /* ignore */ }
+            // Ignore CrawlLimitReachedError - this is expected behavior, not a failure
+            if (error instanceof CrawlLimitReachedError) {
+                log.info(`[EXPECTED] Crawl limit reached for job ${error.jobId}: ${error.reason} - continuing with processed pages`);
+                return; // Skip processing this error
+            }
+
+            // Note: Progress checking is now handled by limitFilterHook in preNavigationHooks
+            // This eliminates duplicate logic and ensures consistent behavior
+
             // Run custom handler if provided
             if (customFailedRequestHandler) {
                 await customFailedRequestHandler(context, error);

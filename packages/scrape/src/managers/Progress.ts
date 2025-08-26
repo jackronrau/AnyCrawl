@@ -2,6 +2,7 @@ import IORedis from "ioredis";
 import { Utils } from "../Utils.js";
 import { JobManager } from "../core/JobManager.js";
 import { completedJob, getDB, schemas, eq, sql } from "@anycrawl/db";
+import { log } from "@anycrawl/libs";
 
 const REDIS_FIELDS = {
     ENQUEUED: "enqueued",
@@ -122,13 +123,16 @@ export class ProgressManager {
         const enqueued = Number(res?.[2]?.[1] ?? 0);
         const done = Number(res?.[3]?.[1] ?? 0);
 
-        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits (only on success)
+        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits (only on success and within limit)
         try {
             const db = await getDB();
-            // Fetch job row ONCE for cost calculation, deduction and potential finalize
+            // Fetch job row ONCE for cost calculation, limit checking, deduction and potential finalize
             let perPageCost = 1;
             let queueNameForFinalize: string | undefined;
             let apiKeyForDeduction: string | undefined;
+            let jobLimit: number | undefined;
+            let shouldDeductCredits = wasSuccess;
+
             try {
                 const [jobRow] = await db
                     .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName, payload: schemas.jobs.payload })
@@ -137,6 +141,13 @@ export class ProgressManager {
                 apiKeyForDeduction = jobRow?.apiKey as string | undefined;
                 queueNameForFinalize = jobRow?.queueName as string | undefined;
                 const payload: any = jobRow?.payload ?? {};
+                jobLimit = payload?.limit;
+                // Check if this page exceeds the limit - don't deduct credits if over limit
+                if (jobLimit && done > jobLimit) {
+                    shouldDeductCredits = false;
+                    log.debug(`[${queueNameForFinalize}] [${jobId}] Page ${done} exceeds limit ${jobLimit}, not deducting credits`);
+                }
+
                 const hasJsonOptions = Boolean(
                     payload?.json_options || payload?.options?.scrape_options?.json_options
                 ) && payload?.options?.formats?.includes("json");
@@ -148,40 +159,45 @@ export class ProgressManager {
             } catch { /* ignore: default perPageCost remains 1 */ }
 
             const updates: any = {
-                total: sql`${schemas.jobs.total} + 1`,
                 updatedAt: new Date(),
             };
+
+            // Always update total, completed, failed counters
+            updates.total = sql`${schemas.jobs.total} + 1`;
             if (wasSuccess) {
                 updates.completed = sql`${schemas.jobs.completed} + 1`;
-                updates.creditsUsed = sql`${schemas.jobs.creditsUsed} + ${perPageCost}`;
+                // Only increment creditsUsed if within limit
+                if (shouldDeductCredits) {
+                    updates.creditsUsed = sql`${schemas.jobs.creditsUsed} + ${perPageCost}`;
+                }
             } else {
                 updates.failed = sql`${schemas.jobs.failed} + 1`;
             }
+
             await db.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
 
-            // Deduct credits from the API key balance per processed URL when credits are enabled
-            if (wasSuccess && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
+            // Deduct credits from the API key balance per processed URL when credits are enabled and within limit
+            if (shouldDeductCredits && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
                 try {
-                    await db
+                    // Update credits and get remaining balance in a single query
+                    const [updatedUser] = await db
                         .update(schemas.apiKey)
                         .set({
                             credits: sql`${schemas.apiKey.credits} - ${perPageCost}`,
                             lastUsedAt: new Date(),
                         })
-                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
+                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction))
+                        .returning({ credits: schemas.apiKey.credits });
 
-                    // Check remaining credits; if exhausted, finalize the job immediately
-                    const [user] = await db
-                        .select({ credits: schemas.apiKey.credits })
-                        .from(schemas.apiKey)
-                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction));
-                    const remaining = user?.credits ?? 0;
+                    const remaining = updatedUser?.credits ?? 0;
                     if (remaining <= 0 && queueNameForFinalize) {
                         try {
                             await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
                         } catch { /* ignore finalize race */ }
                     }
-                } catch { /* ignore deduction errors */ }
+                } catch {
+                    log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
+                }
             }
         } catch { }
         return { done, enqueued };
@@ -205,12 +221,7 @@ export class ProgressManager {
       if finalized == '1' then return 0 end
       local enq = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.ENQUEUED}') or '0')
       local done = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.DONE}') or '0')
-      local target = tonumber(ARGV[2] or '0')
-      if target ~= nil and target > 0 and done >= target then
-        redis.call('HSET', k, '${REDIS_FIELDS.FINALIZED}', '1')
-        redis.call('HSET', k, '${REDIS_FIELDS.FINISHED_AT}', ARGV[1])
-        return 1
-      end
+      -- Only finalize when all enqueued pages are processed, regardless of limit
       if enq > 0 and done == enq then
         redis.call('HSET', k, '${REDIS_FIELDS.FINALIZED}', '1')
         redis.call('HSET', k, '${REDIS_FIELDS.FINISHED_AT}', ARGV[1])
