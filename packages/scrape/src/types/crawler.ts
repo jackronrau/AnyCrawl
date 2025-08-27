@@ -16,7 +16,8 @@ export enum CrawlerErrorType {
     EXTRACTION_ERROR = 'extraction_error',
     VALIDATION_ERROR = 'validation_error',
     INTERNAL_ERROR = 'internal_error',
-    CRAWL_LIMIT_REACHED = 'crawl_limit_reached'
+    CRAWL_LIMIT_REACHED = 'crawl_limit_reached',
+    CREDITS_INSUFFICIENT = 'credits_insufficient'
 }
 
 /**
