@@ -27,8 +27,8 @@ export class CrawlController {
                     const message = `Desired requested limit (${requestedLimit}) exceeds available credits (${userCredits}).`;
                     res.status(402).json({
                         success: false,
-                        error: "Insufficient credits for requested limit",
-                        message: message,
+                        error: "Insufficient credits",
+                        current_credits: userCredits,
                         data: {
                             type: CrawlerErrorType.CREDITS_INSUFFICIENT,
                             message: message,
