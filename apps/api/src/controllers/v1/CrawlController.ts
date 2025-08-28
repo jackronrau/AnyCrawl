@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { z } from "zod";
 import { crawlSchema } from "../../types/CrawlSchema.js";
-import { QueueManager, CrawlerErrorType, RequestTask } from "@anycrawl/scrape";
+import { QueueManager, CrawlerErrorType, RequestTask, ProgressManager } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
 import { randomUUID } from "crypto";
 import { cancelJob, createJob, failedJob, getJob, getJobResultsPaginated, getJobResultsCount, STATUS } from "@anycrawl/db";
@@ -292,6 +292,13 @@ export class CrawlController {
             }
 
             await cancelJob(jobId);
+
+            // Also set cancel/finalize flags in Redis so engines can short-circuit promptly
+            try {
+                await ProgressManager.getInstance().cancel(jobId);
+            } catch {
+                // ignore
+            }
 
             // cancel job in the bullmq queue (best-effort)
             try {
