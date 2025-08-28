@@ -28,12 +28,8 @@ export class CrawlController {
                     res.status(402).json({
                         success: false,
                         error: "Insufficient credits",
+                        message: message,
                         current_credits: userCredits,
-                        data: {
-                            type: CrawlerErrorType.CREDITS_INSUFFICIENT,
-                            message: message,
-                            status: 'failed',
-                        },
                     });
                     return;
                 }
