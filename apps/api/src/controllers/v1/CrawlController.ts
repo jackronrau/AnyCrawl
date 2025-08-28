@@ -17,6 +17,28 @@ export class CrawlController {
         try {
             // Validate request body
             const jobPayload = crawlSchema.parse(req.body);
+
+            // Check if user has enough credits for the requested limit
+            if (req.auth && process.env.ANYCRAWL_API_AUTH_ENABLED === "true" && process.env.ANYCRAWL_API_CREDITS_ENABLED === "true") {
+                const requestedLimit = jobPayload.options.limit;
+                const userCredits = req.auth.credits;
+
+                if (requestedLimit > userCredits) {
+                    const message = `Desired requested limit (${requestedLimit}) exceeds available credits (${userCredits}).`;
+                    res.status(402).json({
+                        success: false,
+                        error: "Insufficient credits",
+                        current_credits: userCredits,
+                        data: {
+                            type: CrawlerErrorType.CREDITS_INSUFFICIENT,
+                            message: message,
+                            status: 'failed',
+                        },
+                    });
+                    return;
+                }
+            }
+
             // Add job to queue
             jobId = await QueueManager.getInstance().addJob(`crawl-${jobPayload.engine}`, jobPayload);
 

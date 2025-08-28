@@ -123,81 +123,86 @@ export class ProgressManager {
         const enqueued = Number(res?.[2]?.[1] ?? 0);
         const done = Number(res?.[3]?.[1] ?? 0);
 
-        // Increment DB counters per page (best-effort, atomic arithmetic) and deduct credits (only on success and within limit)
+        // Increment DB counters per page and deduct credits inside a single DB transaction
         try {
             const db = await getDB();
-            // Fetch job row ONCE for cost calculation, limit checking, deduction and potential finalize
             let perPageCost = 1;
             let queueNameForFinalize: string | undefined;
             let apiKeyForDeduction: string | undefined;
             let jobLimit: number | undefined;
             let shouldDeductCredits = wasSuccess;
+            let remainingAfterDeduction: number | undefined;
 
-            try {
-                const [jobRow] = await db
-                    .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName, payload: schemas.jobs.payload })
-                    .from(schemas.jobs)
-                    .where(eq(schemas.jobs.jobId, jobId));
-                apiKeyForDeduction = jobRow?.apiKey as string | undefined;
-                queueNameForFinalize = jobRow?.queueName as string | undefined;
-                const payload: any = jobRow?.payload ?? {};
-                jobLimit = payload?.limit;
-                // Check if this page exceeds the limit - don't deduct credits if over limit
-                if (jobLimit && done > jobLimit) {
-                    shouldDeductCredits = false;
-                    log.debug(`[${queueNameForFinalize}] [${jobId}] Page ${done} exceeds limit ${jobLimit}, not deducting credits`);
-                }
-
-                const hasJsonOptions = Boolean(
-                    payload?.json_options || payload?.options?.scrape_options?.json_options
-                ) && payload?.options?.formats?.includes("json");
-                const extractJsonCreditsRaw = process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0";
-                const extractJsonCredits = Number.parseInt(extractJsonCreditsRaw, 10);
-                if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
-                    perPageCost += extractJsonCredits;
-                }
-            } catch { /* ignore: default perPageCost remains 1 */ }
-
-            const updates: any = {
-                updatedAt: new Date(),
-            };
-
-            // Always update total, completed, failed counters
-            updates.total = sql`${schemas.jobs.total} + 1`;
-            if (wasSuccess) {
-                updates.completed = sql`${schemas.jobs.completed} + 1`;
-                // Only increment creditsUsed if within limit
-                if (shouldDeductCredits) {
-                    updates.creditsUsed = sql`${schemas.jobs.creditsUsed} + ${perPageCost}`;
-                }
-            } else {
-                updates.failed = sql`${schemas.jobs.failed} + 1`;
-            }
-
-            await db.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
-
-            // Deduct credits from the API key balance per processed URL when credits are enabled and within limit
-            if (shouldDeductCredits && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
+            await db.transaction(async (tx: any) => {
+                // Fetch job row ONCE for cost calculation, limit checking, deduction and potential finalize
                 try {
-                    // Update credits and get remaining balance in a single query
-                    const [updatedUser] = await db
-                        .update(schemas.apiKey)
-                        .set({
-                            credits: sql`${schemas.apiKey.credits} - ${perPageCost}`,
-                            lastUsedAt: new Date(),
-                        })
-                        .where(eq(schemas.apiKey.uuid, apiKeyForDeduction))
-                        .returning({ credits: schemas.apiKey.credits });
-
-                    const remaining = updatedUser?.credits ?? 0;
-                    if (remaining <= 0 && queueNameForFinalize) {
-                        try {
-                            await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
-                        } catch { /* ignore finalize race */ }
+                    const [jobRow] = await tx
+                        .select({ apiKey: schemas.jobs.apiKey, queueName: schemas.jobs.jobQueueName, payload: schemas.jobs.payload })
+                        .from(schemas.jobs)
+                        .where(eq(schemas.jobs.jobId, jobId));
+                    apiKeyForDeduction = jobRow?.apiKey as string | undefined;
+                    queueNameForFinalize = jobRow?.queueName as string | undefined;
+                    const payload: any = jobRow?.payload ?? {};
+                    jobLimit = payload?.limit;
+                    // Check if this page exceeds the limit - don't deduct credits if over limit
+                    if (jobLimit && done > jobLimit) {
+                        shouldDeductCredits = false;
+                        log.debug(`[${queueNameForFinalize}] [${jobId}] Page ${done} exceeds limit ${jobLimit}, not deducting credits`);
                     }
-                } catch {
-                    log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
+
+                    const hasJsonOptions = Boolean(
+                        payload?.json_options || payload?.options?.scrape_options?.json_options
+                    ) && payload?.options?.formats?.includes("json");
+                    const extractJsonCreditsRaw = process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0";
+                    const extractJsonCredits = Number.parseInt(extractJsonCreditsRaw, 10);
+                    if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
+                        perPageCost += extractJsonCredits;
+                    }
+                } catch { /* ignore: default perPageCost remains 1 */ }
+
+                const updates: any = {
+                    updatedAt: new Date(),
+                };
+
+                // Always update total, completed, failed counters
+                updates.total = sql`${schemas.jobs.total} + 1`;
+                if (wasSuccess) {
+                    updates.completed = sql`${schemas.jobs.completed} + 1`;
+                    // Only increment creditsUsed if within limit
+                    if (shouldDeductCredits) {
+                        updates.creditsUsed = sql`${schemas.jobs.creditsUsed} + ${perPageCost}`;
+                    }
+                } else {
+                    updates.failed = sql`${schemas.jobs.failed} + 1`;
                 }
+
+                await tx.update(schemas.jobs).set(updates).where(eq(schemas.jobs.jobId, jobId));
+
+                // Deduct credits from the API key balance per processed URL when credits are enabled and within limit
+                if (shouldDeductCredits && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
+                    try {
+                        // Update credits and get remaining balance in a single query
+                        const [updatedUser] = await tx
+                            .update(schemas.apiKey)
+                            .set({
+                                credits: sql`${schemas.apiKey.credits} - ${perPageCost}`,
+                                lastUsedAt: new Date(),
+                            })
+                            .where(eq(schemas.apiKey.uuid, apiKeyForDeduction))
+                            .returning({ credits: schemas.apiKey.credits });
+
+                        remainingAfterDeduction = updatedUser?.credits ?? 0;
+                    } catch {
+                        log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
+                    }
+                }
+            });
+
+            // After COMMIT: if credits ran out, try to finalize the job
+            if ((remainingAfterDeduction ?? 0) <= 0 && queueNameForFinalize) {
+                try {
+                    await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
+                } catch { /* ignore finalize race */ }
             }
         } catch { }
         return { done, enqueued };

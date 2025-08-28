@@ -24,7 +24,7 @@ export const deductCreditsMiddleware = async (
     const userUuid = req.auth?.uuid;
 
     // Register finish event handler to deduct credits
-    res.on("finish", async () => {
+    res.on("finish", () => {
         if (ignoreDeductRoutes.includes(req.path)) {
             return;
         }
@@ -34,49 +34,70 @@ export const deductCreditsMiddleware = async (
             req.creditsUsed = req.creditsUsed ?? 1;
             log.info(`Deducting credits for user ${userUuid} with credits used: ${req.creditsUsed}`);
             if (req.creditsUsed == 0) {
-                next();
                 return;
             }
-            try {
-                const db = await getDB();
 
-                // Update credits and last_used_at atomically in a single query, allowing negative credits
-                const [updatedUser] = await db
-                    .update(schemas.apiKey)
-                    .set({
-                        credits: sql`${schemas.apiKey.credits} - ${req.creditsUsed!}`,
-                        lastUsedAt: new Date()
-                    })
-                    .where(eq(schemas.apiKey.uuid, userUuid))
-                    .returning({ credits: schemas.apiKey.credits });
-
-                if (!updatedUser) {
-                    throw new Error('User not found');
-                }
-
-                // Update the auth object with the new credit balance
-                if (req.auth) {
-                    req.auth.credits = updatedUser.credits;
-                }
-
-                // If this request is associated with a job, update jobs.credits_used accordingly
-                try {
-                    if (req.jobId) {
-                        await db.update(schemas.jobs).set({
-                            creditsUsed: sql`${schemas.jobs.creditsUsed} + ${req.creditsUsed!}`,
-                            updatedAt: new Date(),
-                        }).where(eq(schemas.jobs.jobId, req.jobId));
-                    }
-                } catch (error) {
-                    log.error(`Failed to update credits for job ${req.jobId || 'unknown'}: ${error}`);
-                }
-
-                log.info(`Deducted ${req.creditsUsed} credits from user ${userUuid}. Remaining credits: ${updatedUser.credits}`);
-            } catch (error) {
-                log.error(`Failed to deduct credits for user ${userUuid}: ${error}`);
-            }
+            // Fire and forget - don't block response completion
+            deductCreditsAsync(userUuid, req.creditsUsed, req.auth, req.jobId).catch(error => {
+                log.error(`Failed to deduct credits for user ${userUuid}, credits used: ${req.creditsUsed}, error: ${error}`);
+            });
         }
     });
 
     next();
-}; 
+};
+
+/**
+ * Asynchronously deduct credits without blocking the response
+ * This function runs in the background and doesn't affect response time
+ */
+async function deductCreditsAsync(
+    userUuid: string | undefined,
+    creditsUsed: number,
+    auth: any,
+    jobId?: string
+): Promise<void> {
+    if (!userUuid) {
+        log.warning('Cannot deduct credits: user UUID not found');
+        return;
+    }
+
+    try {
+        const db = await getDB();
+
+        // Use transaction to ensure atomicity of credits deduction and job update
+        await db.transaction(async (tx: any) => {
+            // Update credits and last_used_at atomically in a single query, allowing negative credits
+            const [updatedUser] = await tx
+                .update(schemas.apiKey)
+                .set({
+                    credits: sql`${schemas.apiKey.credits} - ${creditsUsed}`,
+                    lastUsedAt: new Date()
+                })
+                .where(eq(schemas.apiKey.uuid, userUuid))
+                .returning({ credits: schemas.apiKey.credits });
+
+            if (!updatedUser) {
+                throw new Error('User not found');
+            }
+
+            // Update the auth object with the new credit balance
+            if (auth) {
+                auth.credits = updatedUser.credits;
+            }
+
+            // If this request is associated with a job, update jobs.credits_used accordingly
+            if (jobId) {
+                await tx.update(schemas.jobs).set({
+                    creditsUsed: sql`${schemas.jobs.creditsUsed} + ${creditsUsed}`,
+                    updatedAt: new Date(),
+                }).where(eq(schemas.jobs.jobId, jobId));
+            }
+        });
+
+        log.info(`Deducted ${creditsUsed} credits from user ${userUuid}. Remaining credits: ${auth?.credits}`);
+    } catch (error) {
+        log.error(`Failed to deduct credits for user ${userUuid}: ${error}`);
+        throw error; // Re-throw to be caught by the caller
+    }
+} 
