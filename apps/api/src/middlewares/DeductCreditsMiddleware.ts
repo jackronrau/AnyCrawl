@@ -25,21 +25,25 @@ export const deductCreditsMiddleware = async (
 
     // Register finish event handler to deduct credits
     res.on("finish", () => {
-        if (ignoreDeductRoutes.includes(req.path)) {
+        if (ignoreDeductRoutes.includes(req.path) || ignoreDeductRoutes.includes(req.route.path)) {
+            return;
+        }
+        if (!req.creditsUsed || req.creditsUsed <= 0) {
             return;
         }
         // Only deduct credits for successful requests
-        if (res.statusCode >= 200 && res.statusCode < 400) {
+        if (res.statusCode >= 200 && res.statusCode < 400 && req.creditsUsed && req.creditsUsed > 0) {
             // if req.creditsUsed not set, set it to 1. Preserve explicit 0.
-            req.creditsUsed = req.creditsUsed ?? 1;
-            log.info(`Deducting credits for user ${userUuid} with credits used: ${req.creditsUsed}`);
+            log.info(`[${req.method}] [${req.path}] [${userUuid}] Starting credit deduction: ${req.creditsUsed} credits, status: ${res.statusCode}`);
             if (req.creditsUsed == 0) {
+                log.debug(`[${req.method}] [${req.path}] [${userUuid}] No credits needed to deduct (creditsUsed = 0)`);
                 return;
             }
 
             // Fire and forget - don't block response completion
-            deductCreditsAsync(userUuid, req.creditsUsed, req.auth, req.jobId).catch(error => {
-                log.error(`Failed to deduct credits for user ${userUuid}, credits used: ${req.creditsUsed}, error: ${error}`);
+            log.info(`[${req.method}] [${req.path}] [${userUuid}] Initiating async credit deduction for ${req.creditsUsed} credits${req.jobId ? `, jobId: ${req.jobId}` : ''}`);
+            deductCreditsAsync(userUuid, req.creditsUsed, req.jobId).catch(error => {
+                log.error(`[${req.method}] [${req.path}] [${userUuid}] Failed to deduct credits: ${req.creditsUsed} credits, error: ${error}`);
             });
         }
     });
@@ -54,11 +58,10 @@ export const deductCreditsMiddleware = async (
 async function deductCreditsAsync(
     userUuid: string | undefined,
     creditsUsed: number,
-    auth: any,
     jobId?: string
 ): Promise<void> {
     if (!userUuid) {
-        log.warning('Cannot deduct credits: user UUID not found');
+        log.warning(`Cannot deduct credits: user UUID not found for jobId: ${jobId || 'N/A'}`);
         return;
     }
 
@@ -66,38 +69,32 @@ async function deductCreditsAsync(
         const db = await getDB();
 
         // Use transaction to ensure atomicity of credits deduction and job update
-        await db.transaction(async (tx: any) => {
+        log.info(`[${userUuid}] [${jobId || 'N/A'}] Starting transaction to deduct ${creditsUsed} credits`);
+        await db.transaction((tx: any) => {
             // Update credits and last_used_at atomically in a single query, allowing negative credits
-            const [updatedUser] = await tx
+            const updateResult = tx
                 .update(schemas.apiKey)
                 .set({
                     credits: sql`${schemas.apiKey.credits} - ${creditsUsed}`,
                     lastUsedAt: new Date()
                 })
-                .where(eq(schemas.apiKey.uuid, userUuid))
-                .returning({ credits: schemas.apiKey.credits });
+                .where(eq(schemas.apiKey.uuid, userUuid));
 
-            if (!updatedUser) {
+            if (!updateResult) {
                 throw new Error('User not found');
-            }
-
-            // Update the auth object with the new credit balance
-            if (auth) {
-                auth.credits = updatedUser.credits;
             }
 
             // If this request is associated with a job, update jobs.credits_used accordingly
             if (jobId) {
-                await tx.update(schemas.jobs).set({
+                tx.update(schemas.jobs).set({
                     creditsUsed: sql`${schemas.jobs.creditsUsed} + ${creditsUsed}`,
                     updatedAt: new Date(),
                 }).where(eq(schemas.jobs.jobId, jobId));
             }
+            log.info(`[${userUuid}] [${jobId || 'N/A'}] Credit deduction completed successfully: -${creditsUsed} credits`);
         });
-
-        log.info(`Deducted ${creditsUsed} credits from user ${userUuid}. Remaining credits: ${auth?.credits}`);
     } catch (error) {
-        log.error(`Failed to deduct credits for user ${userUuid}: ${error}`);
+        log.error(`[${userUuid}] [${jobId || 'N/A'}] Failed to deduct credits: ${creditsUsed} credits, error: ${error}`);
         throw error; // Re-throw to be caught by the caller
     }
 } 

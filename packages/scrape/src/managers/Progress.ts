@@ -147,7 +147,7 @@ export class ProgressManager {
                     // Check if this page exceeds the limit - don't deduct credits if over limit
                     if (jobLimit && done > jobLimit) {
                         shouldDeductCredits = false;
-                        log.debug(`[${queueNameForFinalize}] [${jobId}] Page ${done} exceeds limit ${jobLimit}, not deducting credits`);
+                        log.info(`[${queueNameForFinalize}] [${jobId}] Page ${done} exceeds limit ${jobLimit}, not deducting credits`);
                     }
 
                     const hasJsonOptions = Boolean(
@@ -180,6 +180,7 @@ export class ProgressManager {
 
                 // Deduct credits from the API key balance per processed URL when credits are enabled and within limit
                 if (shouldDeductCredits && process.env.ANYCRAWL_API_CREDITS_ENABLED === 'true' && apiKeyForDeduction) {
+                    log.info(`[${queueNameForFinalize}] [${jobId}] Deducting ${perPageCost} credits for page ${done}, apiKey: ${apiKeyForDeduction}`);
                     try {
                         // Update credits and get remaining balance in a single query
                         const [updatedUser] = await tx
@@ -192,6 +193,7 @@ export class ProgressManager {
                             .returning({ credits: schemas.apiKey.credits });
 
                         remainingAfterDeduction = updatedUser?.credits ?? 0;
+                        log.info(`[${queueNameForFinalize}] [${jobId}] Credits deducted: ${perPageCost}, remaining: ${remainingAfterDeduction}, apiKey: ${apiKeyForDeduction}`);
                     } catch {
                         log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
                     }
@@ -226,8 +228,11 @@ export class ProgressManager {
       if finalized == '1' then return 0 end
       local enq = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.ENQUEUED}') or '0')
       local done = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.DONE}') or '0')
-      -- Only finalize when all enqueued pages are processed, regardless of limit
-      if enq > 0 and done == enq then
+      local limit = tonumber(ARGV[2]) or 0
+      -- Finalize when:
+      -- 1. All enqueued pages are processed (done == enq), OR
+      -- 2. We've reached the crawl limit (done >= limit > 0)
+      if (enq > 0 and done == enq) or (limit > 0 and done >= limit) then
         redis.call('HSET', k, '${REDIS_FIELDS.FINALIZED}', '1')
         redis.call('HSET', k, '${REDIS_FIELDS.FINISHED_AT}', ARGV[1])
         return 1
