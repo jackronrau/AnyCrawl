@@ -46,25 +46,32 @@ export class EngineConfigurator {
                 break;
         }
 
+        // Apply common hooks for ALL engines (including Cheerio)
+        this.applyCommonHooks(options, engineType);
+
         return options;
     }
 
-    private static isBrowserEngine(engineType: ConfigurableEngineType): boolean {
-        return engineType === ConfigurableEngineType.PLAYWRIGHT ||
-            engineType === ConfigurableEngineType.PUPPETEER;
-    }
-
-    private static configureBrowserEngine(options: any, engineType: ConfigurableEngineType): void {
+    /**
+     * Apply common hooks for ALL engines (including Cheerio)
+     */
+    private static applyCommonHooks(options: any, engineType: ConfigurableEngineType): void {
         // Limit filter hook - abort requests that exceed crawl limit
         const limitFilterHook = async ({ request }: any) => {
             try {
                 const userData: any = request.userData || {};
                 const jobId = userData?.jobId;
 
+                log.debug(`[limitFilterHook] Hook executed for request: ${request.url}, jobId: ${jobId}, type: ${userData.type}`);
+
                 // Only apply limit filtering to crawl jobs
                 if (jobId && userData.type === JOB_TYPE_CRAWL) {
+                    log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Processing crawl job with limit filtering`);
+
                     const pm = ProgressManager.getInstance();
                     const limit = userData.crawl_options?.limit || 10;
+
+                    log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Fetching progress data: limit=${limit}`);
 
                     // Get current progress
                     const [enqueued, done, finalized, cancelled] = await Promise.all([
@@ -73,6 +80,8 @@ export class EngineConfigurator {
                         pm.isFinalized(jobId),
                         pm.isCancelled(jobId),
                     ]);
+
+                    log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Progress data: enqueued=${enqueued}, done=${done}, finalized=${finalized}, cancelled=${cancelled}`);
 
                     // Check if we should abort this request
                     // Only abort if:
@@ -84,21 +93,41 @@ export class EngineConfigurator {
                                 done >= limit ? 'limit reached' :
                                     'excessive queuing';
 
-                        log.info(`[${userData.queueName}] [${jobId}] Skipping page - ${reason} (processed=${done}, enqueued=${enqueued}, limit=${limit})`);
+                        log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] ABORTING request - ${reason} (processed=${done}, enqueued=${enqueued}, limit=${limit})`);
+                        log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Throwing CrawlLimitReachedError to prevent navigation`);
+
                         // Throw specialized error to abort the navigation and avoid proxy consumption
                         throw new CrawlLimitReachedError(jobId, reason, limit, done);
                     }
+
+                    log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Request allowed to proceed - all checks passed`);
+                } else {
+                    log.debug(`[limitFilterHook] Skipping limit filtering - not a crawl job: jobId=${jobId}, type=${userData.type}`);
                 }
             } catch (error) {
                 // Re-throw CrawlLimitReachedError to abort navigation
                 if (error instanceof CrawlLimitReachedError) {
+                    log.debug(`[limitFilterHook] Re-throwing CrawlLimitReachedError: ${error.message}`);
                     throw error;
                 }
                 // Log and ignore other errors to avoid breaking navigation
-                log.error(`Limit filter hook error: ${error}`);
+                log.error(`[limitFilterHook] Unexpected error in limit filter hook: ${error}`);
             }
         };
 
+        // Merge with existing preNavigationHooks
+        const existingHooks = options.preNavigationHooks || [];
+        options.preNavigationHooks = [limitFilterHook, ...existingHooks];
+
+        log.debug(`[EngineConfigurator] Pre-navigation hooks configured for ${engineType}: total=${options.preNavigationHooks.length}, limitFilterHook=${options.preNavigationHooks.includes(limitFilterHook)}, existingHooks=${existingHooks.length}`);
+    }
+
+    private static isBrowserEngine(engineType: ConfigurableEngineType): boolean {
+        return engineType === ConfigurableEngineType.PLAYWRIGHT ||
+            engineType === ConfigurableEngineType.PUPPETEER;
+    }
+
+    private static configureBrowserEngine(options: any, engineType: ConfigurableEngineType): void {
         // Ad blocking configuration
         const adBlockingHook = async ({ page }: any) => {
             const shouldBlock = (url: string) => AD_DOMAINS.some(domain => url.includes(domain));
@@ -195,9 +224,11 @@ export class EngineConfigurator {
             }
         };
 
-        // Merge with existing preNavigationHooks
+        // Add browser-specific hooks to preNavigationHooks
         const existingHooks = options.preNavigationHooks || [];
-        options.preNavigationHooks = [limitFilterHook, adBlockingHook, requestTimeoutHook, authenticationHook, ...existingHooks];
+        options.preNavigationHooks = [adBlockingHook, requestTimeoutHook, authenticationHook, ...existingHooks];
+
+        log.debug(`[EngineConfigurator] Browser-specific hooks configured for ${engineType}: total=${options.preNavigationHooks.length}, existingHooks=${existingHooks.length}`);
 
         // Apply headless configuration from environment
         if (options.headless === undefined) {
