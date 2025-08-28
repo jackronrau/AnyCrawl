@@ -1,7 +1,7 @@
 import IORedis from "ioredis";
 import { Utils } from "../Utils.js";
 import { JobManager } from "../core/JobManager.js";
-import { completedJob, getDB, schemas, eq, sql } from "@anycrawl/db";
+import { completedJob, failedJob, getDB, schemas, eq, sql } from "@anycrawl/db";
 import { log } from "@anycrawl/libs";
 
 const REDIS_FIELDS = {
@@ -258,10 +258,16 @@ export class ProgressManager {
             };
             // Mark in BullMQ job data
             await new JobManager().markCompleted(jobId, queueName as any, finalSummary);
-            // Mark in DB: isSuccess when not all failed (i.e., succeeded > 0)
 
+            // Mark in DB: if no pages succeeded (completed = 0), mark as failed
             try {
-                await completedJob(jobId, succeeded > 0);
+                if (succeeded === 0) {
+                    // If no pages succeeded, mark job as failed
+                    await failedJob(jobId, "No pages were successfully processed", false, { total, completed: succeeded, failed });
+                } else {
+                    // Mark as completed with success status
+                    await completedJob(jobId, true, { total, completed: succeeded, failed });
+                }
             } catch {
                 // DB not configured or transient error; ignore to not block finalize
             }
