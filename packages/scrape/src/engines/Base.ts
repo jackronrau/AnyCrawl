@@ -566,9 +566,22 @@ export abstract class BaseEngine {
         };
 
         const failedRequestHandler = async (context: CrawlingContext, error: Error) => {
-            // Ignore CrawlLimitReachedError - this is expected behavior, not a failure
+            // Handle CrawlLimitReachedError specially - this is expected behavior, not a failure
             if (error instanceof CrawlLimitReachedError) {
-                log.info(`[EXPECTED] Crawl limit reached for job ${error.jobId}: ${error.reason} - continuing with processed pages`);
+                const { queueName, jobId } = context.request.userData;
+                log.info(`[EXPECTED] [${queueName}] [${jobId}] Crawl limit reached: ${error.reason} - attempting to finalize job`);
+
+                // Try to finalize the job when limit is reached
+                if (jobId && queueName && error.reason === 'limit reached') {
+                    try {
+                        const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
+                        await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                        log.info(`[${queueName}] [${jobId}] Job finalized successfully after limit reached in failedRequestHandler`);
+                    } catch (finalizeError) {
+                        log.warning(`[${queueName}] [${jobId}] Failed to finalize job in failedRequestHandler: ${finalizeError}`);
+                    }
+                }
+
                 return; // Skip processing this error
             }
 

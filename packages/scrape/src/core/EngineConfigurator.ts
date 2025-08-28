@@ -94,6 +94,18 @@ export class EngineConfigurator {
                                     'excessive queuing';
 
                         log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] ABORTING request - ${reason} (processed=${done}, enqueued=${enqueued}, limit=${limit})`);
+
+                        // If we've reached the limit, try to finalize the job immediately
+                        if (done >= limit && !finalized && !cancelled) {
+                            log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] Attempting to finalize job after reaching limit (${done}/${limit})`);
+                            try {
+                                await pm.tryFinalize(jobId, userData.queueName, {}, limit);
+                                log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] Job finalized successfully after reaching limit`);
+                            } catch (finalizeError) {
+                                log.warning(`[limitFilterHook] [${userData.queueName}] [${jobId}] Failed to finalize job after reaching limit: ${finalizeError}`);
+                            }
+                        }
+
                         log.debug(`[limitFilterHook] [${userData.queueName}] [${jobId}] Throwing CrawlLimitReachedError to prevent navigation`);
 
                         // Throw specialized error to abort the navigation and avoid proxy consumption
