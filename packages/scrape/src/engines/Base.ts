@@ -557,9 +557,12 @@ export abstract class BaseEngine {
                     if (!(context.request.userData as any)._doneAccounted) {
                         (context.request.userData as any)._doneAccounted = true;
                         const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, wasSuccess);
-                        // Always attempt finalize; it will no-op until done === enqueued
+                        // Always attempt finalize; it will no-op until conditions are met
                         const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
-                        await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                        const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                        if (finalizeResult) {
+                            log.info(`[${queueName}] [${jobId}] Job finalized successfully after processing page ${done}`);
+                        }
                     }
                 }
             }
@@ -575,8 +578,12 @@ export abstract class BaseEngine {
                 if (jobId && queueName && error.reason === 'limit reached') {
                     try {
                         const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
-                        await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
-                        log.info(`[${queueName}] [${jobId}] Job finalized successfully after limit reached in failedRequestHandler`);
+                        const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                        if (finalizeResult) {
+                            log.info(`[${queueName}] [${jobId}] Job finalized successfully after limit reached in failedRequestHandler`);
+                        } else {
+                            log.warning(`[${queueName}] [${jobId}] Job finalization failed in failedRequestHandler - may need manual intervention`);
+                        }
                     } catch (finalizeError) {
                         log.warning(`[${queueName}] [${jobId}] Failed to finalize job in failedRequestHandler: ${finalizeError}`);
                     }
@@ -604,7 +611,10 @@ export abstract class BaseEngine {
                     (context.request.userData as any)._doneAccounted = true;
                     const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, false);
                     const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
-                    await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                    const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                    if (finalizeResult) {
+                        log.info(`[${queueName}] [${jobId}] Job finalized successfully after failed page processing`);
+                    }
                 }
             }
         };

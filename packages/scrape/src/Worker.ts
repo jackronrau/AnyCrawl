@@ -128,6 +128,68 @@ async function runJob(job: Job) {
             }
         }, 3000); // Check every 3 seconds
 
+        // Check for jobs that need finalization based on limits
+        setInterval(async () => {
+            try {
+                log.debug("Starting periodic finalization check for crawl jobs...");
+                const pm = ProgressManager.getInstance();
+                // Get all active crawl jobs from the database
+                const { getDB, schemas, eq, sql } = await import("@anycrawl/db");
+                const db = await getDB();
+
+                // Use proper drizzle syntax for the query
+                const activeJobs = await db
+                    .select({
+                        jobId: schemas.jobs.jobId,
+                        queueName: schemas.jobs.jobQueueName,
+                        payload: schemas.jobs.payload,
+                        status: schemas.jobs.status
+                    })
+                    .from(schemas.jobs)
+                    .limit(1000)
+                    .where(
+                        sql`${schemas.jobs.status} = 'pending' AND ${schemas.jobs.payload}->>'type' = 'crawl'`
+                    );
+
+                log.debug(`Found ${activeJobs.length} active crawl jobs to check for finalization`);
+
+                let checkedJobs = 0;
+                let jobsWithLimits = 0;
+                let finalizedJobs = 0;
+
+                for (const job of activeJobs) {
+                    try {
+                        checkedJobs++;
+                        const payload = job.payload as any;
+                        const limit = payload?.limit;
+
+                        log.debug(`Checking job ${job.jobId} (queue: ${job.queueName}) - limit: ${limit}`);
+
+                        if (limit && typeof limit === 'number' && limit > 0) {
+                            jobsWithLimits++;
+                            log.debug(`Job ${job.jobId} has limit ${limit}, checking for finalization...`);
+
+                            const wasFinalized = await pm.checkAndFinalizeByLimit(job.jobId, job.queueName, limit);
+                            if (wasFinalized) {
+                                finalizedJobs++;
+                                log.info(`Job ${job.jobId} was finalized due to reaching limit ${limit}`);
+                            } else {
+                                log.debug(`Job ${job.jobId} not yet ready for finalization (limit: ${limit})`);
+                            }
+                        } else {
+                            log.warning(`Job ${job.jobId} has no valid limit, skipping finalization check`);
+                        }
+                    } catch (error) {
+                        log.error(`Error checking job ${job.jobId} for finalization: ${error}`);
+                    }
+                }
+
+                log.info(`Finalization check completed: ${checkedJobs} jobs checked, ${jobsWithLimits} with limits, ${finalizedJobs} finalized`);
+            } catch (error) {
+                log.error(`Error in periodic finalization check: ${error}`);
+            }
+        }, 10000); // Check every 10 seconds
+
         // Handle graceful shutdown
         process.on("SIGINT", async () => {
             log.warning("Received SIGINT signal, stopping all crawlers...");

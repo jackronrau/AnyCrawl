@@ -99,8 +99,13 @@ export class EngineConfigurator {
                         if (done >= limit && !finalized && !cancelled) {
                             log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] Attempting to finalize job after reaching limit (${done}/${limit})`);
                             try {
-                                await pm.tryFinalize(jobId, userData.queueName, {}, limit);
-                                log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] Job finalized successfully after reaching limit`);
+                                // Force finalize with the current limit value
+                                const finalizeResult = await pm.tryFinalize(jobId, userData.queueName, {}, limit);
+                                if (finalizeResult) {
+                                    log.info(`[limitFilterHook] [${userData.queueName}] [${jobId}] Job finalized successfully after reaching limit`);
+                                } else {
+                                    log.warning(`[limitFilterHook] [${userData.queueName}] [${jobId}] Job finalization failed - may need manual intervention`);
+                                }
                             } catch (finalizeError) {
                                 log.warning(`[limitFilterHook] [${userData.queueName}] [${jobId}] Failed to finalize job after reaching limit: ${finalizeError}`);
                             }
