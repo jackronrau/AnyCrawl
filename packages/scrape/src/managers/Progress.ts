@@ -13,6 +13,7 @@ const REDIS_FIELDS = {
     FINISHED_AT: "finished_at",
     FINALIZED: "finalized",
     CANCELLED: "cancelled",
+    ENQUEUING: "enqueuing",
 } as const;
 
 /**
@@ -58,6 +59,18 @@ export class ProgressManager {
         }
     }
 
+    /**
+     * Reset progress state for a job (useful on retries or restarts)
+     */
+    async reset(jobId: string): Promise<void> {
+        const key = this.key(jobId);
+        try {
+            await this.redis.del(key);
+        } catch {
+            // ignore
+        }
+    }
+
     public async getEnqueued(jobId: string): Promise<number> {
         return this.getNumberField(jobId, REDIS_FIELDS.ENQUEUED);
     }
@@ -84,6 +97,35 @@ export class ProgressManager {
         } catch {
             return false;
         }
+    }
+
+    public async beginEnqueue(jobId: string): Promise<void> {
+        const key = this.key(jobId);
+        try {
+            await this.redis.hincrby(key, REDIS_FIELDS.ENQUEUING, 1);
+        } catch { }
+    }
+
+    public async endEnqueue(jobId: string): Promise<void> {
+        const key = this.key(jobId);
+        try {
+            // Decrement but not below zero
+            const lua = `
+              local k = KEYS[1]
+              local f = '${REDIS_FIELDS.ENQUEUING}'
+              local cur = tonumber(redis.call('HGET', k, f) or '0')
+              if cur > 0 then
+                redis.call('HINCRBY', k, f, -1)
+              else
+                redis.call('HSET', k, f, '0')
+              end
+            `;
+            await this.redis.eval(lua, 1, key);
+        } catch { }
+    }
+
+    public async getEnqueuing(jobId: string): Promise<number> {
+        return this.getNumberField(jobId, REDIS_FIELDS.ENQUEUING);
     }
 
     async incrementEnqueued(jobId: string, incrementBy: number): Promise<void> {
@@ -191,20 +233,27 @@ export class ProgressManager {
                             })
                             .where(eq(schemas.apiKey.uuid, apiKeyForDeduction))
                             .returning({ credits: schemas.apiKey.credits });
-
-                        remainingAfterDeduction = updatedUser?.credits ?? 0;
-                        log.info(`[${queueNameForFinalize}] [${jobId}] Credits deducted: ${perPageCost}, remaining: ${remainingAfterDeduction}, apiKey: ${apiKeyForDeduction}`);
+                        if (updatedUser && typeof updatedUser.credits === 'number') {
+                            remainingAfterDeduction = updatedUser.credits;
+                            log.info(`[${queueNameForFinalize}] [${jobId}] Credits deducted: ${perPageCost}, remaining: ${remainingAfterDeduction}, apiKey: ${apiKeyForDeduction}`);
+                        } else {
+                            remainingAfterDeduction = undefined;
+                            log.warning(`[${queueNameForFinalize}] [${jobId}] Credits deduction returned no row or invalid data; skipping credits-based finalize`);
+                        }
                     } catch {
                         log.error(`Error deducting credits for job ${jobId}, apiKey: ${apiKeyForDeduction}, perPageCost: ${perPageCost}`);
+                        remainingAfterDeduction = undefined;
                     }
                 }
             });
 
-            // After COMMIT: if credits ran out, try to finalize the job
-            if ((remainingAfterDeduction ?? 0) <= 0 && queueNameForFinalize) {
+            // After COMMIT: only if we positively know credits are exhausted, attempt a safe finalize.
+            // Avoid premature finalize when deduction result is unknown or credits feature not applied.
+            if (remainingAfterDeduction !== undefined && remainingAfterDeduction <= 0 && queueNameForFinalize) {
                 try {
-                    log.info(`[${queueNameForFinalize}] [${jobId}] Credits exhausted, attempting to finalize job`);
-                    const finalizeResult = await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
+                    const target = Number.isFinite(jobLimit as number) && (jobLimit as number) > 0 ? (jobLimit as number) : 0;
+                    log.info(`[${queueNameForFinalize}] [${jobId}] Credits exhausted, attempting safe finalize (target=${target}, done=${done})`);
+                    const finalizeResult = await this.tryFinalize(jobId, queueNameForFinalize, { reason: 'credits_exhausted' }, target);
                     if (finalizeResult) {
                         log.info(`[${queueNameForFinalize}] [${jobId}] Job finalized successfully after credits exhausted`);
                     }
@@ -233,10 +282,13 @@ export class ProgressManager {
       local enq = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.ENQUEUED}') or '0')
       local done = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.DONE}') or '0')
       local limit = tonumber(ARGV[2]) or 0
-      -- Finalize when:
-      -- 1. All enqueued pages are processed (done == enq)
-      -- 2. OR we've reached the limit (done >= limit and limit > 0)
-      if (enq > 0 and done == enq) or (limit > 0 and done >= limit) then
+      local enqueuing = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.ENQUEUING}') or '0')
+      -- Finalize policy:
+      -- 1) Reached the explicit limit (done >= limit and limit > 0) — terminate proactively
+      -- 2) Or queue drained (all enqueued processed) AND no active enqueuers
+      local reached_limit = (limit > 0 and done >= limit)
+      local queue_drained = (enq > 0 and done == enq and enqueuing == 0)
+      if reached_limit or queue_drained then
         redis.call('HSET', k, '${REDIS_FIELDS.FINALIZED}', '1')
         redis.call('HSET', k, '${REDIS_FIELDS.FINISHED_AT}', ARGV[1])
         return 1

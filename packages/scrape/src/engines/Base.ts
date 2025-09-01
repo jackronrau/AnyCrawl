@@ -384,44 +384,59 @@ export abstract class BaseEngine {
                 exclude.push(context.request.url);
             }
             // enqueueLinks is context-aware and doesn't need explicit requestQueue
-            const links = await context.enqueueLinks({
-                ...(includeGlobs.length > 0 ? { globs: includeGlobs } : {}),
-                ...(includeRegexps.length > 0 ? { regexps: includeRegexps } : {}),
-                ...(exclude.length > 0 ? { exclude } : {}),
-                // Pass along the userData to new requests
-                userData: context.request.userData,
-                // Use 'all' strategy to crawl more broadly, or 'same-domain' for same domain
-                strategy: strategy,
-                // Keep original limit to ensure we don't under-enqueue
-                limit: limit,
-                onSkippedRequest: ({ url, reason }) => {
-                    log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Skipped (${reason}): ${url}`);
-                },
-                transformRequestFunction: (request) => {
-                    const jobId = request.userData?.jobId;
-                    if (!jobId) return request;
+            const pmForEnqueue = ProgressManager.getInstance();
+            let links: any = { processedRequests: [] };
+            const isCrawlJob = context.request.userData.type === JOB_TYPE_CRAWL && jobId;
+            if (isCrawlJob) {
+                try { await pmForEnqueue.beginEnqueue(jobId); } catch { }
+            }
+            try {
+                const enqLinks = await context.enqueueLinks({
+                    ...(includeGlobs.length > 0 ? { globs: includeGlobs } : {}),
+                    ...(includeRegexps.length > 0 ? { regexps: includeRegexps } : {}),
+                    ...(exclude.length > 0 ? { exclude } : {}),
+                    // Pass along the userData to new requests
+                    userData: context.request.userData,
+                    // Use 'all' strategy to crawl more broadly, or 'same-domain' for same domain
+                    strategy: strategy,
+                    // Keep original limit to ensure we don't under-enqueue
+                    limit: limit,
+                    onSkippedRequest: ({ url, reason }) => {
+                        log.debug(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Skipped (${reason}): ${url}`);
+                    },
+                    transformRequestFunction: (request) => {
+                        const jobId = request.userData?.jobId;
+                        if (!jobId) return request;
 
-                    // Depth handling: inherit parent's depth and increment
-                    const parentDepth = (context.request.userData as any)?.depth ?? 0;
-                    const nextDepth = parentDepth + 1;
-                    if (typeof maxDepth === 'number' && nextDepth > maxDepth) {
-                        // Skip enqueuing beyond max depth
-                        return null as any;
-                    }
-                    request.userData = { ...request.userData, depth: nextDepth } as any;
+                        // Depth handling: inherit parent's depth and increment
+                        const parentDepth = (context.request.userData as any)?.depth ?? 0;
+                        const nextDepth = parentDepth + 1;
+                        if (typeof maxDepth === 'number' && nextDepth > maxDepth) {
+                            // Skip enqueuing beyond max depth
+                            return null as any;
+                        }
+                        request.userData = { ...request.userData, depth: nextDepth } as any;
 
-                    // Use Crawlee's own uniqueKey computation to ensure consistency
-                    const baseUnique = request.uniqueKey ?? Request.computeUniqueKey({
-                        url: request.url,
-                        method: (request as any).method ?? 'GET',
-                        payload: (request as any).payload,
-                        keepUrlFragment: (request as any).keepUrlFragment ?? false,
-                        useExtendedUniqueKey: (request as any).useExtendedUniqueKey ?? false,
-                    });
-                    request.uniqueKey = `${jobId}-${baseUnique}`;
-                    return request;
-                },
-            });
+                        // Use Crawlee's own uniqueKey computation to ensure consistency
+                        const baseUnique = request.uniqueKey ?? Request.computeUniqueKey({
+                            url: request.url,
+                            method: (request as any).method ?? 'GET',
+                            payload: (request as any).payload,
+                            keepUrlFragment: (request as any).keepUrlFragment ?? false,
+                            useExtendedUniqueKey: (request as any).useExtendedUniqueKey ?? false,
+                        });
+                        request.uniqueKey = `${jobId}-${baseUnique}`;
+                        return request;
+                    },
+                });
+                links = enqLinks;
+            } catch (error) {
+                log.error(`Error in enqueueLinks: ${error instanceof Error ? error.message : String(error)}`);
+            } finally {
+                if (isCrawlJob) {
+                    try { await pmForEnqueue.endEnqueue(jobId!); } catch { }
+                }
+            }
             // Increase enqueued count for crawl jobs only (count only truly newly enqueued)
             if (context.request.userData.type === JOB_TYPE_CRAWL) {
                 const jobId = context.request.userData.jobId;
@@ -432,6 +447,16 @@ export abstract class BaseEngine {
                         : 0
                 );
                 await ProgressManager.getInstance().incrementEnqueued(jobId, added);
+                // After enqueue completes for this batch, proactively attempt finalize (no-op unless conditions met)
+                try {
+                    const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
+                    await ProgressManager.getInstance().tryFinalize(
+                        jobId,
+                        context.request.userData.queueName,
+                        { reason: 'post-enqueue-check' },
+                        finalizeTarget
+                    );
+                } catch { }
             }
             log.info(`[${context.request.userData.queueName}] [${context.request.userData.jobId}] Links enqueued: ${links.processedRequests.length}`);
         } catch (error) {
@@ -559,7 +584,7 @@ export abstract class BaseEngine {
                         const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, wasSuccess);
                         // Always attempt finalize; it will no-op until conditions are met
                         const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
-                        const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                        const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, { reason: 'post-done-check' }, finalizeTarget);
                         if (finalizeResult) {
                             log.info(`[${queueName}] [${jobId}] Job finalized successfully after processing page ${done}`);
                         }
@@ -611,7 +636,7 @@ export abstract class BaseEngine {
                     (context.request.userData as any)._doneAccounted = true;
                     const { done, enqueued } = await ProgressManager.getInstance().markPageDone(jobId, false);
                     const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
-                    const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, {}, finalizeTarget);
+                    const finalizeResult = await ProgressManager.getInstance().tryFinalize(jobId, queueName, { reason: 'failed-page-check' }, finalizeTarget);
                     if (finalizeResult) {
                         log.info(`[${queueName}] [${jobId}] Job finalized successfully after failed page processing`);
                     }
