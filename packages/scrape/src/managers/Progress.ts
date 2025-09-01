@@ -203,7 +203,11 @@ export class ProgressManager {
             // After COMMIT: if credits ran out, try to finalize the job
             if ((remainingAfterDeduction ?? 0) <= 0 && queueNameForFinalize) {
                 try {
-                    await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
+                    log.info(`[${queueNameForFinalize}] [${jobId}] Credits exhausted, attempting to finalize job`);
+                    const finalizeResult = await this.tryFinalize(jobId, queueNameForFinalize, {}, done);
+                    if (finalizeResult) {
+                        log.info(`[${queueNameForFinalize}] [${jobId}] Job finalized successfully after credits exhausted`);
+                    }
                 } catch { /* ignore finalize race */ }
             }
         } catch { }
@@ -230,8 +234,8 @@ export class ProgressManager {
       local done = tonumber(redis.call('HGET', k, '${REDIS_FIELDS.DONE}') or '0')
       local limit = tonumber(ARGV[2]) or 0
       -- Finalize when:
-      -- 1. All enqueued pages are processed (done == enq), OR
-      -- 2. We've reached the crawl limit (done >= limit > 0)
+      -- 1. All enqueued pages are processed (done == enq)
+      -- 2. OR we've reached the limit (done >= limit and limit > 0)
       if (enq > 0 and done == enq) or (limit > 0 and done >= limit) then
         redis.call('HSET', k, '${REDIS_FIELDS.FINALIZED}', '1')
         redis.call('HSET', k, '${REDIS_FIELDS.FINISHED_AT}', ARGV[1])
@@ -297,6 +301,40 @@ export class ProgressManager {
                 .exec();
         } catch {
             // ignore
+        }
+    }
+
+    /**
+     * Check if a job should be finalized based on limit and current progress
+     * This method can be called periodically to ensure jobs don't hang
+     */
+    async checkAndFinalizeByLimit(jobId: string, queueName: string, limit: number): Promise<boolean> {
+        try {
+            const [done, finalized, cancelled] = await Promise.all([
+                this.getDone(jobId),
+                this.isFinalized(jobId),
+                this.isCancelled(jobId)
+            ]);
+
+            // If already finalized or cancelled, no action needed
+            if (finalized || cancelled) {
+                return false;
+            }
+
+            // If we've reached the limit, try to finalize
+            if (limit > 0 && done >= limit) {
+                log.info(`[${queueName}] [${jobId}] Limit reached (${done}/${limit}), attempting to finalize job`);
+                const finalizeResult = await this.tryFinalize(jobId, queueName, {}, limit);
+                if (finalizeResult) {
+                    log.info(`[${queueName}] [${jobId}] Job finalized successfully by limit check`);
+                }
+                return finalizeResult;
+            }
+
+            return false;
+        } catch (error) {
+            log.error(`[${queueName}] [${jobId}] Error in checkAndFinalizeByLimit: ${error}`);
+            return false;
         }
     }
 }
