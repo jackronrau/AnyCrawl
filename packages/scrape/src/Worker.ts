@@ -32,6 +32,10 @@ try {
         log.warning(`[ai] validation: ${msg}. Check provider credentials (apiKey/baseURL) for the configured provider.`);
     }
 } catch { }
+const authEnabled = process.env.ANYCRAWL_API_AUTH_ENABLED === "true";
+const creditsEnabled = process.env.ANYCRAWL_API_CREDITS_ENABLED === "true";
+log.info(`🔐 Auth enabled: ${authEnabled}`);
+log.info(`💳 Credits deduction enabled: ${creditsEnabled}`);
 log.info("Initializing queues and engines...");
 // Dynamically import after AI config is ready to ensure @anycrawl/ai is initialized with config
 const { EngineQueueManager, AVAILABLE_ENGINES } = await import("./managers/EngineQueue.js");
@@ -127,6 +131,41 @@ async function runJob(job: Job) {
                 }
             }
         }, 3000); // Check every 3 seconds
+
+        // Log current browser instances for browser engines (controlled by env)
+        if (process.env.ANYCRAWL_LOG_BROWSER_STATUS === "true") {
+            setInterval(async () => {
+                for (const engineType of AVAILABLE_ENGINES) {
+                    try {
+                        const engine = await engineQueueManager.getEngine(engineType);
+                        const crawler: any = (engine as any).getEngine ? (engine as any).getEngine() : undefined;
+                        const isBrowserEngine = engineType === 'playwright' || engineType === 'puppeteer';
+                        let browserCount: number | string = isBrowserEngine ? 0 : 'n/a';
+                        let desiredConcurrency: number | string = 'n/a';
+                        let currentConcurrency: number | string = 'n/a';
+
+                        if (crawler) {
+                            const browserPool: any = (crawler as any).browserPool ?? (crawler as any)._browserPool;
+                            const autoscaledPool: any = (crawler as any).autoscaledPool ?? (crawler as any)._autoscaledPool;
+
+                            // Fixed single source of truth for browser count
+                            if (browserPool && isBrowserEngine) {
+                                browserCount = browserPool.activeBrowserControllers ?? 0;
+                            }
+
+                            if (autoscaledPool) {
+                                desiredConcurrency = autoscaledPool.desiredConcurrency ?? autoscaledPool._desiredConcurrency ?? 'n/a';
+                                currentConcurrency = autoscaledPool.currentConcurrency ?? autoscaledPool._currentConcurrency ?? 'n/a';
+                            }
+                        }
+
+                        log.info(`Browser status for ${engineType} - count: ${browserCount} (desired=${desiredConcurrency}, current=${currentConcurrency})`);
+                    } catch (error) {
+                        log.error(`Error checking browser status for ${engineType}: ${error}`);
+                    }
+                }
+            }, 5000); // Check every 5 seconds
+        }
 
         // Check for jobs that need finalization based on limits
         setInterval(async () => {
