@@ -51,7 +51,11 @@ app.use("/v1", v1Router);
 
 // Start the server
 const server = app.listen(port, async () => {
+    const authEnabled = process.env.ANYCRAWL_API_AUTH_ENABLED === "true";
+    const creditsEnabled = process.env.ANYCRAWL_API_CREDITS_ENABLED === "true";
     log.info(`✨ Server is running on port ${port}`);
+    log.info(`🔐 Auth enabled: ${authEnabled}`);
+    log.info(`💳 Credits deduction enabled: ${creditsEnabled}`);
 });
 
 // Graceful shutdown handling
