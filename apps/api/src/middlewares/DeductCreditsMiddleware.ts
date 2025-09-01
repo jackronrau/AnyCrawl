@@ -70,9 +70,9 @@ async function deductCreditsAsync(
 
         // Use transaction to ensure atomicity of credits deduction and job update
         log.info(`[${userUuid}] [${jobId || 'N/A'}] Starting transaction to deduct ${creditsUsed} credits`);
-        await db.transaction((tx: any) => {
-            // Update credits and last_used_at atomically in a single query, allowing negative credits
-            const updateResult = tx
+        await db.transaction(async (tx: any) => {
+            // Update credits and last_used_at atomically; ensure the query executes
+            await tx
                 .update(schemas.apiKey)
                 .set({
                     credits: sql`${schemas.apiKey.credits} - ${creditsUsed}`,
@@ -80,18 +80,29 @@ async function deductCreditsAsync(
                 })
                 .where(eq(schemas.apiKey.uuid, userUuid));
 
-            if (!updateResult) {
-                throw new Error('User not found');
-            }
-
             // If this request is associated with a job, update jobs.credits_used accordingly
             if (jobId) {
-                tx.update(schemas.jobs).set({
+                await tx.update(schemas.jobs).set({
                     creditsUsed: sql`${schemas.jobs.creditsUsed} + ${creditsUsed}`,
                     updatedAt: new Date(),
                 }).where(eq(schemas.jobs.jobId, jobId));
             }
-            log.info(`[${userUuid}] [${jobId || 'N/A'}] Credit deduction completed successfully: -${creditsUsed} credits`);
+
+            // Optional: fetch remaining credits for logging/verification
+            try {
+                const [after] = await tx
+                    .select({ credits: schemas.apiKey.credits })
+                    .from(schemas.apiKey)
+                    .where(eq(schemas.apiKey.uuid, userUuid));
+                if (after && typeof after.credits === 'number') {
+                    log.info(`[${userUuid}] [${jobId || 'N/A'}] Credit deduction completed successfully: -${creditsUsed} credits, remaining: ${after.credits}`);
+                } else {
+                    log.info(`[${userUuid}] [${jobId || 'N/A'}] Credit deduction completed successfully: -${creditsUsed} credits`);
+                }
+            } catch {
+                // Fallback if select fails (e.g., transient issues)
+                log.info(`[${userUuid}] [${jobId || 'N/A'}] Credit deduction completed successfully: -${creditsUsed} credits`);
+            }
         });
     } catch (error) {
         log.error(`[${userUuid}] [${jobId || 'N/A'}] Failed to deduct credits: ${creditsUsed} credits, error: ${error}`);
