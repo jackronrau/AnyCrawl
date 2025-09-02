@@ -554,6 +554,23 @@ export abstract class BaseEngine {
                         context,
                         error as Error
                     );
+                    // For crawl jobs: mark page done as failed and attempt finalize
+                    try {
+                        const { queueName, jobId } = context.request.userData;
+                        if (jobId && context.request.userData.type === JOB_TYPE_CRAWL) {
+                            if (!(context.request.userData as any)._doneAccounted) {
+                                (context.request.userData as any)._doneAccounted = true;
+                                await ProgressManager.getInstance().markPageDone(jobId, false);
+                                const finalizeTarget = (context.request.userData?.crawl_options?.limit as number) || 0;
+                                await ProgressManager.getInstance().tryFinalize(
+                                    jobId,
+                                    queueName,
+                                    { reason: 'extract-error' },
+                                    finalizeTarget
+                                );
+                            }
+                        }
+                    } catch { }
                     return;
                 }
             }
