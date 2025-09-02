@@ -9,6 +9,7 @@ export ANYCRAWL_API_AUTH_ENABLED="${ANYCRAWL_API_AUTH_ENABLED:-false}"
 
 # Ensure storage directory exists
 mkdir -p /usr/src/app/storage
+mkdir -p /usr/src/app/db
 
 # Source engine configuration if available (sets ANYCRAWL_AVAILABLE_ENGINES)
 if [ -f "/usr/src/app/set-engines.sh" ]; then
