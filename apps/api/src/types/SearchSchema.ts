@@ -5,8 +5,8 @@ import { AVAILABLE_SEARCH_ENGINES } from "@anycrawl/search/constants";
 const searchSchema = z.object({
     engine: z.enum(AVAILABLE_SEARCH_ENGINES).optional(),
     query: z.string(),
-    limit: z.number().optional(),
-    offset: z.number().optional(),
+    limit: z.number().max(100).min(1).default(10).optional(),
+    offset: z.number().min(0).default(0).optional(),
     pages: z.number().min(1).max(20).optional(),
     lang: z.custom<SearchLocale>().optional(),
     country: z.custom<SearchLocale>().optional(),

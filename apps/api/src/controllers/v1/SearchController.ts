@@ -56,8 +56,8 @@ export class SearchController {
 
             const results = await this.searchService.search(engineName, {
                 query: validatedData.query,
-                limit: validatedData.limit || 10,
-                offset: validatedData.offset || 0,
+                limit: validatedData.limit,
+                offset: validatedData.offset,
                 pages: expectedPages,
                 lang: validatedData.lang,
                 // country: validatedData.country,
