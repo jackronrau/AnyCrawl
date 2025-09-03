@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     redis-server \
     supervisor \
     bash \
+    build-essential python3 make g++ \
     && corepack enable \
     && npx playwright install-deps \
     && rm -rf /var/lib/apt/lists/*
@@ -116,6 +117,8 @@ COPY --from=build /usr/src/app/apps/api/package.json ./apps/api/
 
 # Install production dependencies
 RUN --mount=type=cache,id=pnpm-glibc,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# Ensure native modules rebuilt for current platform (in case scripts were skipped earlier due to cache)
+RUN pnpm rebuild better-sqlite3
 
 # Bring in dev tooling (drizzle-kit) from migration stage so we can run migrations without npx
 COPY --from=migration /usr/src/app/node_modules ./node_modules

@@ -9,6 +9,11 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
 RUN corepack enable pnpm
 
+# Build toolchain for native modules (e.g., better-sqlite3)
+RUN apt-get update && apt-get install -y \
+    build-essential python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN npx playwright install-deps
 
 FROM base AS build
@@ -19,7 +24,7 @@ COPY packages/scrape/package.json ./packages/scrape/package.json
 COPY packages/db/package.json ./packages/db/package.json
 COPY packages/ai/package.json ./packages/ai/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build --filter=@anycrawl/scrape --filter=@anycrawl/libs --filter=@anycrawl/db --filter=@anycrawl/ai
 RUN rm -rf node_modules
@@ -44,7 +49,9 @@ COPY --from=build /usr/src/app/packages/libs/package.json /usr/src/app/packages/
 COPY --from=build /usr/src/app/packages/db/package.json /usr/src/app/packages/db/package.json
 COPY --from=build /usr/src/app/packages/ai/package.json /usr/src/app/packages/ai/package.json
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# Ensure native modules rebuilt for current platform
+RUN pnpm rebuild better-sqlite3
 ENV ANYCRAWL_AVAILABLE_ENGINES=playwright
 
 RUN npx -y playwright install chromium
