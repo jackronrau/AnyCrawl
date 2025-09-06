@@ -59,6 +59,7 @@ export class SearchController {
             const scrapeJobCreationPromises: Promise<void>[] = [];
             const scrapeCompletionPromises: Promise<{ url: string; data: any }>[] = [];
             let completedScrapeCount = 0;
+            let totalScrapeCount = 0; // Track total scrape tasks
             // Global scrape limit control (if limit provided)
             const shouldLimitScrape = typeof validatedData.limit === 'number' && validatedData.limit > 0;
             let remainingScrape = shouldLimitScrape ? (validatedData.limit as number) : Number.POSITIVE_INFINITY;
@@ -99,18 +100,15 @@ export class SearchController {
                                     options: {
                                         ...scrapeOptions,
                                     },
+                                    // Pass search job ID as parent ID for result recording
+                                    parentId: searchJobId,
                                 };
                                 const createTask = (async () => {
                                     const scrapeJobId = await QueueManager.getInstance().addJob(`scrape-${engineForScrape}`, jobPayload);
-                                    await createJob({
-                                        job_id: scrapeJobId,
-                                        job_type: 'scrape',
-                                        job_queue_name: `scrape-${engineForScrape}`,
-                                        url: resultUrl,
-                                        req,
-                                        status: STATUS.PENDING,
-                                    });
+                                    // Don't create a separate job in the jobs table
+                                    // The scrape engine will record results directly to the search job
                                     scrapeJobIds.push(scrapeJobId);
+                                    totalScrapeCount++; // Increment total scrape count
                                     // prepare wait-for-completion promise for this job
                                     scrapeCompletionPromises.push((async () => {
                                         const job = await QueueManager.getInstance().waitJobDone(
@@ -141,8 +139,11 @@ export class SearchController {
                         );
                     }
 
-                    // Update job counts based on pages for progress
-                    await updateJobCounts(searchJobId!, { total: expectedPages, completed: successPages, failed: failedPages });
+                    // Update job counts based on pages for progress (include scrape tasks)
+                    const totalTasks = expectedPages + totalScrapeCount;
+                    const completedTasks = successPages + completedScrapeCount;
+                    const failedTasks = failedPages + (totalScrapeCount - completedScrapeCount);
+                    await updateJobCounts(searchJobId!, { total: totalTasks, completed: completedTasks, failed: failedTasks });
                 } catch (e) {
                     log.error(`Per-page handler error for job_id=${searchJobId}: ${e instanceof Error ? e.message : String(e)}`);
                 }
@@ -173,17 +174,21 @@ export class SearchController {
                 req.creditsUsed = validatedData.pages ?? 1;
             }
 
-            // Mark job status based on page results
+            // Mark job status based on page results and scrape tasks
             try {
-                if (failedPages >= expectedPages) {
+                const finalTotalTasks = expectedPages + totalScrapeCount;
+                const finalCompletedTasks = successPages + completedScrapeCount;
+                const finalFailedTasks = failedPages + (totalScrapeCount - completedScrapeCount);
+
+                if (finalFailedTasks >= finalTotalTasks) {
                     await failedJob(
                         searchJobId,
-                        `All pages failed (${failedPages}/${expectedPages})`,
+                        `All tasks failed (${finalFailedTasks}/${finalTotalTasks})`,
                         false,
-                        { total: expectedPages, completed: successPages, failed: failedPages }
+                        { total: finalTotalTasks, completed: finalCompletedTasks, failed: finalFailedTasks }
                     );
                 } else {
-                    await completedJob(searchJobId, true, { total: expectedPages, completed: successPages, failed: failedPages });
+                    await completedJob(searchJobId, true, { total: finalTotalTasks, completed: finalCompletedTasks, failed: finalFailedTasks });
                 }
             } catch (e) {
                 log.error(`Failed to mark job final status for job_id=${searchJobId}: ${e instanceof Error ? e.message : String(e)}`);
