@@ -285,17 +285,24 @@ export class DataExtractor {
                     return result;
                 })();
             }
-            // json_options, need to extract data from markdown. and formats must include json
-            // TODO: consider to extract data from HTML, combine with tag info may be better
+            // json_options, need to extract data from markdown or html based on extractSource option
             if (options.json_options && formats.includes("json")) {
                 // Resolve extract model id via config-aware helper
                 const modelId = getExtractModelId();
-                log.info(`[extract] Resolved extract model: ${modelId}`);
+                const extractSource = options.extractSource || "markdown";
+                log.info(`[extract] Resolved extract model: ${modelId}, extract source: ${extractSource}`);
                 formatTasks.json = (async () => {
-                    const markdown = await (formatTasks.markdown ?? Promise.resolve(baseContent.markdown));
+                    let extractContent: string;
+                    if (extractSource === "html") {
+                        // Extract from HTML
+                        extractContent = await (htmlPromise ?? Promise.resolve(baseContent.rawHtml));
+                    } else {
+                        // Extract from Markdown (default)
+                        extractContent = await (formatTasks.markdown ?? Promise.resolve(baseContent.markdown));
+                    }
                     const llmExtractAgent = this.getLLMExtractAgent(modelId);
                     const extractStart = Date.now();
-                    const result = await llmExtractAgent.perform(markdown, options.json_options.schema ?? null, {
+                    const result = await llmExtractAgent.perform(extractContent, options.json_options.schema ?? null, {
                         prompt: options.json_options.user_prompt ?? null,
                         schemaName: options.json_options.schema_name ?? null,
                         schemaDescription: options.json_options.schema_description ?? null,

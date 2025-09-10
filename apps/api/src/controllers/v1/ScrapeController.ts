@@ -4,6 +4,7 @@ import { scrapeSchema } from "../../types/ScrapeSchema.js";
 import { QueueManager, CrawlerErrorType } from "@anycrawl/scrape";
 import { RequestWithAuth } from "../../types/Types.js";
 import { STATUS, createJob, failedJob } from "@anycrawl/db";
+import { log } from "@anycrawl/libs";
 export class ScrapeController {
     public handle = async (req: RequestWithAuth, res: Response): Promise<void> => {
         let jobId: string | null = null;
@@ -56,6 +57,13 @@ export class ScrapeController {
                 const hasJsonOptions = Boolean((jobPayload as any)?.options?.json_options) && (jobPayload as any)?.options?.formats?.includes("json");
                 if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
                     req.creditsUsed += extractJsonCredits;
+
+                    // Double credits for HTML extraction
+                    const extractSource = (jobPayload as any)?.options?.extractSource || "markdown";
+                    if (extractSource === "html") {
+                        req.creditsUsed += extractJsonCredits; // Double the credits for HTML extraction
+                        log.info(`[scrape] HTML extraction detected, adding ${extractJsonCredits} extra credits (total: ${req.creditsUsed})`);
+                    }
                 }
             } catch {
                 // ignore credit calc errors; default to base cost

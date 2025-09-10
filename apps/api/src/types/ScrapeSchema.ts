@@ -12,6 +12,7 @@ const pickedSchema = baseSchema.pick({
     include_tags: true,
     exclude_tags: true,
     json_options: true,
+    extract_source: true,
 });
 
 export const scrapeSchema = pickedSchema.transform((data) => ({
@@ -26,6 +27,7 @@ export const scrapeSchema = pickedSchema.transform((data) => ({
         includeTags: data.include_tags,
         excludeTags: data.exclude_tags,
         json_options: data.json_options,
+        extractSource: data.extract_source,
     }
 }));
 

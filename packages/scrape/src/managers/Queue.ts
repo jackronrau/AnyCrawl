@@ -13,6 +13,7 @@ export interface RequestTaskOptions {
     waitFor?: number;
     includeTags?: string[];
     excludeTags?: string[];
+    extractSource?: "html" | "markdown";
 }
 
 export interface CrawlOptions {

@@ -13,6 +13,7 @@ const scrapeOptionsInputSchema = baseSchema
         include_tags: true,
         exclude_tags: true,
         json_options: true,
+        extract_source: true,
     })
     .strict();
 
