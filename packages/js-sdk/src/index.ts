@@ -299,7 +299,8 @@ export class AnyCrawlClient {
                 throw new Error(`Crawl failed (job_id=${jobId})`);
             }
             if (status.status === 'cancelled') {
-                throw new Error(`Crawl cancelled (job_id=${jobId})`);
+                // throw new Error(`Crawl cancelled (job_id=${jobId})`);
+                break;
             }
 
             if (timeoutMs !== undefined && Date.now() - startedAt > timeoutMs) {
