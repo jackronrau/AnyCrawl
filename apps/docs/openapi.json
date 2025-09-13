@@ -171,6 +171,14 @@
                     },
                     "additionalProperties": false
                   },
+                  "extract_source": {
+                    "type": "string",
+                    "enum": [
+                      "html",
+                      "markdown"
+                    ],
+                    "default": "markdown"
+                  },
                   "scrape_options": {
                     "type": "object",
                     "properties": {
@@ -1310,12 +1318,19 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "extract_source": {
+                    "type": "string",
+                    "enum": [
+                      "html",
+                      "markdown"
+                    ],
+                    "default": "markdown"
                   }
                 },
                 "required": [
                   "url",
-                  "engine",
-                  "json_options"
+                  "engine"
                 ]
               }
             }

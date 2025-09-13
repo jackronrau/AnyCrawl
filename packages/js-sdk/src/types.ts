@@ -1,0 +1,119 @@
+export type ApiResponse<T> = { success: true; data: T } | { success: false; error: string; message?: string; data?: any };
+
+export type ExtractSource = 'html' | 'markdown';
+export type Engine = 'playwright' | 'cheerio' | 'puppeteer';
+export type ScrapeFormat = 'markdown' | 'html' | 'text' | 'screenshot' | 'screenshot@fullPage' | 'rawHtml' | 'json';
+
+export type JsonOptions = {
+    schema?: any;
+    user_prompt?: string;
+    schema_name?: string;
+    schema_description?: string;
+};
+
+export type ScrapeOptionsInput = {
+    proxy?: string;
+    formats?: ScrapeFormat[];
+    timeout?: number;
+    retry?: boolean;
+    wait_for?: number;
+    include_tags?: string[];
+    exclude_tags?: string[];
+    json_options?: JsonOptions;
+    extract_source?: ExtractSource;
+};
+
+export type ScrapeRequest = {
+    url: string;
+    engine: Engine;
+} & ScrapeOptionsInput;
+
+export type ScrapeResultSuccess = {
+    url: string;
+    status: 'completed';
+    jobId: string;
+    title: string;
+    html: string;
+    markdown: string;
+    metadata: any[];
+    timestamp: string;
+    screenshot?: string;
+    'screenshot@fullPage'?: string;
+};
+export type ScrapeResultFailed = {
+    url: string;
+    status: 'failed';
+    error: string;
+};
+export type ScrapeResult = ScrapeResultSuccess | ScrapeResultFailed;
+
+export type CrawlOptions = {
+    exclude_paths?: string[];
+    include_paths?: string[];
+    max_depth?: number;
+    strategy?: 'all' | 'same-domain' | 'same-hostname' | 'same-origin';
+    limit?: number;
+    scrape_options?: Omit<ScrapeOptionsInput, 'retry'>; // runtime ignores retry in nested options
+};
+
+export type CrawlRequest = {
+    url: string;
+    engine: Engine;
+} & CrawlOptions & ScrapeOptionsInput; // top-level also accepts base scrape params
+
+export type CrawlJobResponse = {
+    job_id: string;
+    status: 'created';
+    message: string;
+};
+
+export type CrawlStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+export type CrawlStatusResponse = {
+    job_id: string;
+    status: CrawlStatus;
+    start_time: string;
+    expires_at: string;
+    credits_used: number;
+    total: number;
+    completed: number;
+    failed: number;
+};
+
+export type CrawlResultsResponse = {
+    success: true;
+    status: CrawlStatus;
+    total: number;
+    completed: number;
+    creditsUsed: number;
+    next?: string | null;
+    data: any[];
+};
+
+export type SearchRequest = {
+    engine?: 'google';
+    query: string;
+    limit?: number;
+    offset?: number;
+    pages?: number;
+    lang?: any;
+    country?: any;
+    scrape_options?: (Omit<ScrapeOptionsInput, 'engine'> & { engine: Engine });
+    safeSearch?: number | null;
+};
+
+export type SearchResult = {
+    title: string;
+    url?: string;
+    description?: string;
+    source: string;
+} & Partial<ScrapeResultSuccess>;
+
+export type CrawlAndWaitResult = {
+    job_id: string;
+    status: CrawlStatus;
+    total: number;
+    completed: number;
+    creditsUsed: number;
+    data: any[];
+};
+

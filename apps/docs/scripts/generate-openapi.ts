@@ -6,7 +6,7 @@ import { join } from 'path';
 
 // Import real schemas from API workspace packages
 import { searchSchema } from 'api/src/types/SearchSchema.js';
-import { baseSchema, jsonOptionsSchema, ALLOWED_ENGINES } from 'api/src/types/BaseSchema.js';
+import { baseSchema, jsonOptionsSchema, ALLOWED_ENGINES, EXTRACT_SOURCES } from 'api/src/types/BaseSchema.js';
 import { crawlSchema } from 'api/src/types/CrawlSchema.js';
 
 // Build request input schema from API baseSchema (avoid transformed schema that lacks .openapi)
@@ -22,6 +22,7 @@ const scrapeInputSchema: any = (baseSchema as any).pick({
     include_tags: true,
     exclude_tags: true,
     json_options: true,
+    extract_source: true,
 });
 
 // Ensure the local Zod instance is extended (for response schemas below)
@@ -82,8 +83,12 @@ const scrapeSchemaForOpenAPI = withOpenApi(
         exclude_tags: withOpenApi((scrapeInputSchema as any).shape.exclude_tags, {
             description: 'Exclude elements with these CSS selectors'
         }),
+        extract_source: withOpenApi((scrapeInputSchema as any).shape.extract_source, {
+            description: 'The source format to use for JSON extraction (html or markdown), default is markdown',
+            example: 'markdown'
+        }),
         // Override to avoid circularly-referenced JSON schema
-        json_options: jsonOptionsSchemaForDocs
+        json_options: (jsonOptionsSchemaForDocs as any).optional()
     }),
     { description: 'Request schema for web scraping' }
 );

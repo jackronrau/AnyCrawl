@@ -168,7 +168,25 @@ export class SearchController {
             // credits: pages + one per successfully completed scrape job (if any)
             try {
                 const pageCredits = validatedData.pages ?? 1;
-                const scrapeCredits = validatedData.scrape_options ? completedScrapeCount : 0;
+                let scrapeCredits = validatedData.scrape_options ? completedScrapeCount : 0;
+
+                // Add extra credits for JSON extraction if enabled
+                if (validatedData.scrape_options) {
+                    const extractJsonCredits = Number.parseInt(process.env.ANYCRAWL_EXTRACT_JSON_CREDITS || "0", 10);
+                    const hasJsonOptions = Boolean(validatedData.scrape_options.json_options) &&
+                        validatedData.scrape_options.formats?.includes("json");
+
+                    if (hasJsonOptions && Number.isFinite(extractJsonCredits) && extractJsonCredits > 0) {
+                        const extractSource = validatedData.scrape_options.extract_source || "markdown";
+                        const jsonCreditsPerScrape = extractSource === "html" ? extractJsonCredits * 2 : extractJsonCredits;
+                        scrapeCredits += completedScrapeCount * jsonCreditsPerScrape;
+
+                        if (extractSource === "html") {
+                            log.info(`[search] HTML extraction detected, using double credits (${jsonCreditsPerScrape} per scrape, total: ${scrapeCredits})`);
+                        }
+                    }
+                }
+
                 req.creditsUsed = pageCredits + scrapeCredits;
             } catch {
                 req.creditsUsed = validatedData.pages ?? 1;

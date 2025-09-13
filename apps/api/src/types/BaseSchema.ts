@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { ALLOWED_ENGINES, SCRAPE_FORMATS } from "@anycrawl/scrape/constants";
+import { ALLOWED_ENGINES, SCRAPE_FORMATS, EXTRACT_SOURCES } from "@anycrawl/scrape/constants";
 
-export { ALLOWED_ENGINES, SCRAPE_FORMATS };
+export { ALLOWED_ENGINES, SCRAPE_FORMATS, EXTRACT_SOURCES };
 
 // Define the recursive JSON Schema type
 export const jsonSchemaType: z.ZodType<any> = z.lazy(() =>
@@ -83,6 +83,11 @@ export const baseSchema = z.object({
      * The JSON options to be used for extracting structured data
      */
     json_options: jsonOptionsSchema.optional(),
+
+    /**
+     * The source format to use for JSON extraction (html or markdown)
+     */
+    extract_source: z.enum(EXTRACT_SOURCES).default("markdown"),
 });
 
 export type BaseSchema = z.infer<typeof baseSchema>;
