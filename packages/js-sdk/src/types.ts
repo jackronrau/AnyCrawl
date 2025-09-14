@@ -4,8 +4,17 @@ export type ExtractSource = 'html' | 'markdown';
 export type Engine = 'playwright' | 'cheerio' | 'puppeteer';
 export type ScrapeFormat = 'markdown' | 'html' | 'text' | 'screenshot' | 'screenshot@fullPage' | 'rawHtml' | 'json';
 
+// Project-aligned JSON schema (apps/api/src/types/BaseSchema.ts: jsonSchemaType)
+export type JSONSchema = {
+    type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
+    properties?: Record<string, JSONSchema>;
+    required?: string[];
+    items?: JSONSchema | JSONSchema[];
+    description?: string;
+};
+
 export type JsonOptions = {
-    schema?: any;
+    schema?: JSONSchema;
     user_prompt?: string;
     schema_name?: string;
     schema_description?: string;
@@ -53,7 +62,7 @@ export type CrawlOptions = {
     max_depth?: number;
     strategy?: 'all' | 'same-domain' | 'same-hostname' | 'same-origin';
     limit?: number;
-    scrape_options?: Omit<ScrapeOptionsInput, 'retry'>; // runtime ignores retry in nested options
+    scrape_options?: Omit<ScrapeOptionsInput, 'retry' | 'extract_source'>; // nested options exclude retry and extract_source
 };
 
 export type CrawlRequest = {
@@ -97,7 +106,7 @@ export type SearchRequest = {
     pages?: number;
     lang?: any;
     country?: any;
-    scrape_options?: (Omit<ScrapeOptionsInput, 'engine'> & { engine: Engine });
+    scrape_options: (Omit<ScrapeOptionsInput, 'retry' | 'extract_source'> & { engine: Engine });
     safeSearch?: number | null;
 };
 
