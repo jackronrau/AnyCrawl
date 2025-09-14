@@ -217,15 +217,18 @@ describe('AnyCrawlClient', () => {
             const options: CrawlRequest = {
                 url: 'https://example.com',
                 engine: 'playwright',
-                proxy: 'http://proxy.example.com:8080',
-                formats: ['markdown', 'html'],
-                timeout: 60000,
-                wait_for: 3000,
+                // Scrape options should live inside scrape_options for crawl
+                scrape_options: {
+                    proxy: 'http://proxy.example.com:8080',
+                    formats: ['markdown', 'html'],
+                    timeout: 60000,
+                    wait_for: 3000,
+                    include_tags: ['article'],
+                    exclude_tags: ['nav'],
+                    json_options: { schema: { type: 'object' } },
+                },
+                // Retry remains a top-level crawl option
                 retry: true,
-                include_tags: ['article'],
-                exclude_tags: ['nav'],
-                json_options: { schema: { type: 'object' } },
-                scrape_options: {},
                 exclude_paths: ['/admin/*'],
                 include_paths: ['/blog/*'],
                 max_depth: 5,
