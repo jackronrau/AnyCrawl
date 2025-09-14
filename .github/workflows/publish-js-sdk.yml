@@ -6,7 +6,7 @@ on:
             - main
         paths:
             - packages/js-sdk/package.json
-
+    workflow_dispatch: {}
 jobs:
     publish:
         runs-on: ubuntu-latest
