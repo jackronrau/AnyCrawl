@@ -63,7 +63,7 @@ export type CrawlOptions = {
     max_depth?: number;
     strategy?: 'all' | 'same-domain' | 'same-hostname' | 'same-origin';
     limit?: number;
-    scrape_options?: Omit<ScrapeOptionsInput, 'retry' | 'extract_source'>; // nested options exclude retry and extract_source
+    scrape_options?: Omit<ScrapeOptionsInput, 'retry'>;
 };
 
 export type CrawlRequest = {
