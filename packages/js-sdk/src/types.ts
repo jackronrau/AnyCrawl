@@ -57,6 +57,7 @@ export type ScrapeResultFailed = {
 export type ScrapeResult = ScrapeResultSuccess | ScrapeResultFailed;
 
 export type CrawlOptions = {
+    retry?: boolean;
     exclude_paths?: string[];
     include_paths?: string[];
     max_depth?: number;
@@ -68,7 +69,7 @@ export type CrawlOptions = {
 export type CrawlRequest = {
     url: string;
     engine: Engine;
-} & CrawlOptions & ScrapeOptionsInput; // top-level also accepts base scrape params
+} & CrawlOptions; // scrape options must be nested under scrape_options
 
 export type CrawlJobResponse = {
     job_id: string;
@@ -106,7 +107,7 @@ export type SearchRequest = {
     pages?: number;
     lang?: any;
     country?: any;
-    scrape_options: (Omit<ScrapeOptionsInput, 'retry' | 'extract_source'> & { engine: Engine });
+    scrape_options?: (Omit<ScrapeOptionsInput, 'retry'> & { engine: Engine });
     safeSearch?: number | null;
 };
 
