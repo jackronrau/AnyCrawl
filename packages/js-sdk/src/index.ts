@@ -13,6 +13,9 @@ import {
     SearchRequest,
     CrawlAndWaitResult,
 } from './types.js';
+import { scrape as scrapeMethod } from './methods/scrape.js';
+import { createCrawl as createCrawlMethod } from './methods/crawl.js';
+import { search as searchMethod } from './methods/search.js';
 
 /**
  * AnyCrawl JavaScript/TypeScript client.
@@ -114,25 +117,8 @@ export class AnyCrawlClient {
      * @returns A successful or failed scrape result
      */
     async scrape(input: ScrapeRequest): Promise<ScrapeResult> {
-        const body: any = {
-            url: input.url,
-            engine: input.engine,
-            proxy: input.proxy,
-            formats: input.formats,
-            timeout: input.timeout,
-            retry: input.retry,
-            wait_for: input.wait_for,
-            include_tags: input.include_tags,
-            exclude_tags: input.exclude_tags,
-            json_options: input.json_options,
-            extract_source: input.extract_source,
-        };
         try {
-            const response: AxiosResponse<ApiResponse<ScrapeResult>> = await this.client.post('/v1/scrape', body);
-            if (!response.data.success) {
-                throw new Error((response.data as any).error || 'Scraping failed');
-            }
-            return (response.data as any).data;
+            return await scrapeMethod(this.client, input);
         } catch (error: any) {
             return this.normalizeAxiosError(error);
         }
@@ -145,31 +131,8 @@ export class AnyCrawlClient {
      * @returns Crawl job metadata (job_id, status, message)
      */
     async createCrawl(input: CrawlRequest): Promise<CrawlJobResponse> {
-        const body: any = {
-            url: input.url,
-            engine: input.engine,
-            proxy: input.proxy,
-            formats: input.formats,
-            timeout: input.timeout,
-            retry: input.retry,
-            wait_for: input.wait_for,
-            include_tags: input.include_tags,
-            exclude_tags: input.exclude_tags,
-            json_options: input.json_options,
-            extract_source: input.extract_source,
-            exclude_paths: input.exclude_paths,
-            include_paths: input.include_paths,
-            max_depth: input.max_depth,
-            strategy: input.strategy,
-            limit: input.limit,
-            scrape_options: input.scrape_options,
-        };
         try {
-            const response: AxiosResponse<ApiResponse<CrawlJobResponse>> = await this.client.post('/v1/crawl', body);
-            if (!response.data.success) {
-                throw new Error((response.data as any).error || 'Crawl creation failed');
-            }
-            return (response.data as any).data;
+            return await createCrawlMethod(this.client, input);
         } catch (error: any) {
             return this.normalizeAxiosError(error);
         }
@@ -233,23 +196,8 @@ export class AnyCrawlClient {
      * @returns A list of search results (optionally enriched with scrape fields)
      */
     async search(input: SearchRequest): Promise<SearchResult[]> {
-        const body: any = {
-            engine: input.engine,
-            query: input.query,
-            limit: input.limit,
-            offset: input.offset,
-            pages: input.pages,
-            lang: input.lang,
-            country: input.country,
-            scrape_options: input.scrape_options,
-            safeSearch: input.safeSearch,
-        };
         try {
-            const response: AxiosResponse<ApiResponse<SearchResult[]>> = await this.client.post('/v1/search', body);
-            if (!response.data.success) {
-                throw new Error((response.data as any).error || 'Search failed');
-            }
-            return (response.data as any).data;
+            return await searchMethod(this.client, input);
         } catch (error: any) {
             return this.normalizeAxiosError(error);
         }
@@ -299,7 +247,8 @@ export class AnyCrawlClient {
                 throw new Error(`Crawl failed (job_id=${jobId})`);
             }
             if (status.status === 'cancelled') {
-                throw new Error(`Crawl cancelled (job_id=${jobId})`);
+                // throw new Error(`Crawl cancelled (job_id=${jobId})`);
+                break;
             }
 
             if (timeoutMs !== undefined && Date.now() - startedAt > timeoutMs) {

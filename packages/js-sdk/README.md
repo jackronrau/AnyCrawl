@@ -40,6 +40,7 @@ const job = await client.createCrawl({
     max_depth: 3,
     strategy: "same-domain",
     limit: 50,
+    scrape_options: { formats: ["markdown"] },
 });
 const status = await client.getCrawlStatus(job.job_id);
 const page1 = await client.getCrawlResults(job.job_id, 0);
@@ -120,8 +121,7 @@ const job = await client.createCrawl({
     max_depth: 5,
     strategy: "same-domain",
     limit: 100,
-    // Top-level scrape options also apply to crawling
-    formats: ["markdown"],
+    scrape_options: { formats: ["markdown"] },
     include_paths: ["/docs/*"],
     exclude_paths: ["/admin/*"],
 });
@@ -152,8 +152,8 @@ try {
             max_depth: 3,
             strategy: "same-domain",
             limit: 50,
-            // You can pass top-level scrape options here as well
-            formats: ["markdown"],
+            // Scrape options are nested under scrape_options
+            scrape_options: { formats: ["markdown"] },
         },
         3, // poll every 3s
         5 * 60_000 // timeout after 5 minutes
@@ -185,6 +185,12 @@ await client.search({
     safeSearch: 1,
 });
 ```
+
+Notes:
+
+- scrape has no `scrape_options`.
+- crawl accepts top-level scrape fields and/or nested `scrape_options`; prefer `scrape_options`.
+- search requires `scrape_options` and its `engine`.
 
 ## Error handling
 
