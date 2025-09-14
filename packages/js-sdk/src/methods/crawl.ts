@@ -5,7 +5,6 @@ import { omitUndefined, buildCrawlScrapeOptions } from '../utils/index.js';
 export async function createCrawl(client: AxiosInstance, input: CrawlRequest): Promise<CrawlJobResponse> {
     const scrape_options = buildCrawlScrapeOptions(input);
     const body: any = { url: input.url, engine: input.engine ?? 'playwright' };
-    if (input.extract_source != null) body.extract_source = input.extract_source;
     if (input.exclude_paths != null) body.exclude_paths = input.exclude_paths;
     if (input.include_paths != null) body.include_paths = input.include_paths;
     if (input.max_depth != null) body.max_depth = input.max_depth;

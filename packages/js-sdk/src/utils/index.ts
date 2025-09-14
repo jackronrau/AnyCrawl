@@ -19,9 +19,9 @@ export async function sleep(seconds: number): Promise<void> {
  */
 export function buildCrawlScrapeOptions(
     input: CrawlRequest
-): Partial<Omit<ScrapeOptionsInput, 'retry' | 'extract_source'>> {
+): Partial<Omit<ScrapeOptionsInput, 'retry'>> {
     const merged: Partial<Omit<ScrapeOptionsInput, 'retry'>> = {};
-    // Only scrape_options are considered for crawl
+    // Only nested scrape_options are considered for crawl
     if (input.scrape_options) {
         const nested = input.scrape_options;
         if (nested.proxy != null) merged.proxy = nested.proxy;
@@ -31,6 +31,7 @@ export function buildCrawlScrapeOptions(
         if (nested.include_tags != null) merged.include_tags = nested.include_tags;
         if (nested.exclude_tags != null) merged.exclude_tags = nested.exclude_tags;
         if (nested.json_options != null) merged.json_options = nested.json_options;
+        if (nested.extract_source != null) merged.extract_source = nested.extract_source;
     }
     return merged;
 }
