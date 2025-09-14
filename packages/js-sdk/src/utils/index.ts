@@ -20,16 +20,8 @@ export async function sleep(seconds: number): Promise<void> {
 export function buildCrawlScrapeOptions(
     input: CrawlRequest
 ): Partial<Omit<ScrapeOptionsInput, 'retry' | 'extract_source'>> {
-    const merged: Partial<Omit<ScrapeOptionsInput, 'retry' | 'extract_source'>> = {};
-    // Top-level
-    if (input.proxy != null) merged.proxy = input.proxy;
-    if (input.formats != null) merged.formats = input.formats;
-    if (input.timeout != null) merged.timeout = input.timeout;
-    if (input.wait_for != null) merged.wait_for = input.wait_for;
-    if (input.include_tags != null) merged.include_tags = input.include_tags;
-    if (input.exclude_tags != null) merged.exclude_tags = input.exclude_tags;
-    if (input.json_options != null) merged.json_options = input.json_options;
-    // Nested overrides
+    const merged: Partial<Omit<ScrapeOptionsInput, 'retry'>> = {};
+    // Only scrape_options are considered for crawl
     if (input.scrape_options) {
         const nested = input.scrape_options;
         if (nested.proxy != null) merged.proxy = nested.proxy;
@@ -48,7 +40,8 @@ export function buildCrawlScrapeOptions(
  */
 export function buildSearchScrapeOptions(
     options: SearchRequest['scrape_options']
-): SearchRequest['scrape_options'] {
+): SearchRequest['scrape_options'] | undefined {
+    if (!options) return undefined;
     const out: SearchRequest['scrape_options'] = { engine: options.engine as Engine };
     if (options.proxy != null) out.proxy = options.proxy;
     if (options.formats != null) out.formats = options.formats;

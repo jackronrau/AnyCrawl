@@ -189,8 +189,8 @@ await client.search({
 Notes:
 
 - scrape has no `scrape_options`.
-- crawl accepts top-level scrape fields and/or nested `scrape_options`; prefer `scrape_options`.
-- search requires `scrape_options` and its `engine`.
+- crawl only accepts nested `scrape_options`; top-level only allows crawl strategy fields and optional `retry`.
+- search supports optional `scrape_options`; when provided, it must include its `engine`.
 
 ## Error handling
 
