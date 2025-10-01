@@ -196,6 +196,11 @@ export class GoogleSearchEngine implements SearchEngine {
      * @returns The search results
      */
     async parse(response: string, request: any): Promise<SearchResult[]> {
+        const match = response.match(/About\s([\d,]+)\sresults/);
+        log.debug("Google total results match", {
+            url: request?.url,
+            match: match ? match[1] : null,
+        });
         const $ = cheerio.load(response);
         const results: SearchResult[] = [];
 
