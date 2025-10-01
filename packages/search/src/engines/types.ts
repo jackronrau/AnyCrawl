@@ -8,6 +8,11 @@ export interface SearchResult {
     page?: number;
 }
 
+export interface SearchParseResult {
+    results: SearchResult[];
+    totalResults?: number;
+}
+
 export interface SearchTask {
     url: string;
     headers: Record<string, string>;
@@ -30,5 +35,5 @@ export interface SearchOptions {
 export interface SearchEngine {
     search(options: SearchOptions): Promise<SearchTask>;
     getName(): string;
-    parse(html: string, request?: any): Promise<SearchResult[]>;
+    parse(html: string, request?: any): Promise<SearchParseResult>;
 }

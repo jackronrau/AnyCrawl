@@ -8,6 +8,7 @@ import {
     CrawlResultsResponse,
     ScrapeResult,
     SearchResult,
+    SearchResponse,
     ScrapeRequest,
     CrawlRequest,
     SearchRequest,
@@ -195,7 +196,7 @@ export class AnyCrawlClient {
      * @param input Search parameters (query, pagination, locale, scrape options)
      * @returns A list of search results (optionally enriched with scrape fields)
      */
-    async search(input: SearchRequest): Promise<SearchResult[]> {
+    async search(input: SearchRequest): Promise<SearchResponse> {
         try {
             return await searchMethod(this.client, input);
         } catch (error: any) {
@@ -296,5 +297,4 @@ export class AnyCrawlClient {
 }
 
 export * from './types.js';
-
 

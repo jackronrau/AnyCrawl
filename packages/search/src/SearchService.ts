@@ -1,4 +1,4 @@
-import { SearchEngine, SearchOptions, SearchResult, SearchTask } from "./engines/types.js";
+import { SearchEngine, SearchOptions, SearchParseResult, SearchResult, SearchTask } from "./engines/types.js";
 import { GoogleSearchEngine } from "./engines/Google.js";
 import { Utils, CrawlingContext, Engine, EngineFactoryRegistry } from "@anycrawl/scrape";
 import { randomUUID } from "node:crypto";
@@ -6,13 +6,14 @@ import { log } from "@anycrawl/libs";
 
 export class SearchService {
     private engines: Map<string, SearchEngine>;
-    private requestsToResponses: Map<string, (results: SearchResult[]) => void>;
+    private requestsToResponses: Map<string, (result: SearchParseResult) => void>;
     private partialResults: Map<string, SearchResult[]>;
     private pendingRequests: Map<string, number>;
     private crawler: Engine | null = null;
     private searchQueue: any | null = null;
-    private requestsToOnPage: Map<string, (page: number, results: SearchResult[], uniqueKey: string, success: boolean) => void>;
+    private requestsToOnPage: Map<string, (page: number, results: SearchResult[], uniqueKey: string, success: boolean, totalResults?: number) => void>;
     private requestsToLimit: Map<string, number | undefined>;
+    private requestsToTotalResults: Map<string, number | undefined>;
 
     constructor() {
         this.engines = new Map();
@@ -21,6 +22,7 @@ export class SearchService {
         this.pendingRequests = new Map();
         this.requestsToOnPage = new Map();
         this.requestsToLimit = new Map();
+        this.requestsToTotalResults = new Map();
     }
 
     private createEngine(name: string): SearchEngine {
@@ -66,14 +68,19 @@ export class SearchService {
                             const engine = this.getEngine(request.userData.engineName);
                             log.info(`HTML content length: ${html.length}`);
 
-                            const results = await engine.parse(html, request);
-                            log.info(`Parsed results: ${results.length}`);
+                            const parsed = await engine.parse(html, request);
+                            const { results, totalResults } = parsed;
+                            log.info(`Parsed results: ${results.length}${totalResults !== undefined ? `, totalResults: ${totalResults}` : ""}`);
 
                             const pageNumber = request.userData.page ?? 1;
 
                             // Per-page callback
                             const onPageCb = this.requestsToOnPage.get(uniqueKey);
-                            if (onPageCb) onPageCb(pageNumber, results, uniqueKey, true);
+                            if (onPageCb) onPageCb(pageNumber, results, uniqueKey, true, totalResults);
+
+                            if (totalResults !== undefined) {
+                                this.requestsToTotalResults.set(uniqueKey, totalResults);
+                            }
 
                             // Accumulate results
                             const currentResults = this.partialResults.get(uniqueKey) || [];
@@ -94,12 +101,14 @@ export class SearchService {
                                     const finalResults = typeof limit === 'number' && limit > 0
                                         ? aggregated.slice(0, limit)
                                         : aggregated;
-                                    callback(finalResults);
+                                    const total = this.requestsToTotalResults.get(uniqueKey);
+                                    callback({ results: finalResults, totalResults: total });
                                     this.requestsToResponses.delete(uniqueKey);
                                     this.partialResults.delete(uniqueKey);
                                     this.pendingRequests.delete(uniqueKey);
                                     this.requestsToOnPage.delete(uniqueKey);
                                     this.requestsToLimit.delete(uniqueKey);
+                                    this.requestsToTotalResults.delete(uniqueKey);
                                 }
                             }
                         } catch (error) {
@@ -118,7 +127,7 @@ export class SearchService {
 
                             // Per-page callback (failure)
                             const onPageCb = this.requestsToOnPage.get(uniqueKey);
-                            if (onPageCb) onPageCb(pageNumber, [], uniqueKey, false);
+                            if (onPageCb) onPageCb(pageNumber, [], uniqueKey, false, undefined);
 
                             // Decrement pending requests even for failed requests
                             const pendingCount = this.pendingRequests.get(uniqueKey) || 0;
@@ -137,12 +146,14 @@ export class SearchService {
                                     const finalResults = typeof limit === 'number' && limit > 0
                                         ? aggregated.slice(0, limit)
                                         : aggregated;
-                                    callback(finalResults);
+                                    const total = this.requestsToTotalResults.get(uniqueKey);
+                                    callback({ results: finalResults, totalResults: total });
                                     this.requestsToResponses.delete(uniqueKey);
                                     this.partialResults.delete(uniqueKey);
                                     this.pendingRequests.delete(uniqueKey);
                                     this.requestsToOnPage.delete(uniqueKey);
                                     this.requestsToLimit.delete(uniqueKey);
+                                    this.requestsToTotalResults.delete(uniqueKey);
                                 }
                             }
                         } catch (error) {
@@ -162,7 +173,7 @@ export class SearchService {
         engineName: string,
         options: SearchOptions,
         onPage?: (page: number, results: SearchResult[], uniqueKey: string, success: boolean) => void,
-    ): Promise<SearchResult[]> {
+    ): Promise<SearchParseResult> {
         log.info("Search called with options:", options);
         return new Promise(async (resolve) => {
             const uniqueKey = randomUUID();
@@ -180,6 +191,7 @@ export class SearchService {
             }
             this.pendingRequests.set(uniqueKey, effectivePages);
             if (onPage) this.requestsToOnPage.set(uniqueKey, onPage);
+            this.requestsToTotalResults.set(uniqueKey, undefined);
 
             await this.executeSearch(engineName, { ...options, pages: effectivePages }, uniqueKey);
         });
@@ -244,8 +256,12 @@ export class SearchService {
             log.error(`Search execution error: ${error}`);
             const callback = this.requestsToResponses.get(uniqueKey);
             if (callback) {
-                callback([]);
+                const aggregated = this.partialResults.get(uniqueKey) || [];
+                const total = this.requestsToTotalResults.get(uniqueKey);
+                callback({ results: aggregated, totalResults: total });
                 this.requestsToResponses.delete(uniqueKey);
+                this.partialResults.delete(uniqueKey);
+                this.requestsToTotalResults.delete(uniqueKey);
             }
         }
     }

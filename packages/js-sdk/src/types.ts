@@ -1,4 +1,6 @@
-export type ApiResponse<T> = { success: true; data: T } | { success: false; error: string; message?: string; data?: any };
+export type ApiResponse<T> =
+    | { success: true; data: T; totalResults?: number }
+    | { success: false; error: string; message?: string; data?: any };
 
 export type ExtractSource = 'html' | 'markdown';
 export type Engine = 'playwright' | 'cheerio' | 'puppeteer';
@@ -118,6 +120,11 @@ export type SearchResult = {
     source: string;
 } & Partial<ScrapeResultSuccess>;
 
+export type SearchResponse = {
+    results: SearchResult[];
+    totalResults?: number;
+};
+
 export type CrawlAndWaitResult = {
     job_id: string;
     status: CrawlStatus;
@@ -126,4 +133,3 @@ export type CrawlAndWaitResult = {
     creditsUsed: number;
     data: any[];
 };
-

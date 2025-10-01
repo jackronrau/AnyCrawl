@@ -1,4 +1,4 @@
-import { SearchEngine, SearchOptions, SearchResult, SearchTask } from "./types.js";
+import { SearchEngine, SearchOptions, SearchParseResult, SearchResult, SearchTask } from "./types.js";
 import { google } from "../data/Google.js";
 import { log } from "@anycrawl/libs/log";
 import * as cheerio from "cheerio";
@@ -195,9 +195,22 @@ export class GoogleSearchEngine implements SearchEngine {
      * @param response - The response from the Google search page
      * @returns The search results
      */
-    async parse(response: string, request: any): Promise<SearchResult[]> {
+    async parse(response: string, request: any): Promise<SearchParseResult> {
         const $ = cheerio.load(response);
         const results: SearchResult[] = [];
+        let totalResults: number | undefined;
+
+        try {
+            const totalResultsMatch = response.match(/About\s([\d,]+)\sresults/i);
+            if (totalResultsMatch && totalResultsMatch[1]) {
+                const numericValue = Number(totalResultsMatch[1].replace(/,/g, ""));
+                if (!Number.isNaN(numericValue)) {
+                    totalResults = numericValue;
+                }
+            }
+        } catch (error) {
+            log.info("Failed to parse total results from Google response", { error: String(error) });
+        }
 
         // Parse regular search results
         $('div[jscontroller="SC7lYd"]').each((_, element) => {
@@ -248,6 +261,6 @@ export class GoogleSearchEngine implements SearchEngine {
         //     }
         // });
 
-        return results;
+        return { results, totalResults };
     }
 }

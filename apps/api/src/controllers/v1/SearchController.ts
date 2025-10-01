@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { z } from "zod";
 import { SearchService } from "@anycrawl/search/SearchService";
+import type { SearchResult } from "@anycrawl/search/engines/types";
 import { log } from "@anycrawl/libs/log";
 import { searchSchema } from "../../types/SearchSchema.js";
 import { RequestWithAuth } from "../../types/Types.js";
@@ -64,15 +65,20 @@ export class SearchController {
             const shouldLimitScrape = typeof validatedData.limit === 'number' && validatedData.limit > 0;
             let remainingScrape = shouldLimitScrape ? (validatedData.limit as number) : Number.POSITIVE_INFINITY;
 
-            const results = await this.searchService.search(engineName, {
+            const { results: searchResults, totalResults } = await this.searchService.search(engineName, {
                 query: validatedData.query,
                 limit: validatedData.limit,
                 offset: validatedData.offset,
                 pages: expectedPages,
                 lang: validatedData.lang,
                 // country: validatedData.country,
-            }, async (page, pageResults, _uniqueKey, success) => {
-                console.log(pageResults)
+            }, async (
+                page: number,
+                pageResults: SearchResult[],
+                _uniqueKey: string,
+                success: boolean,
+                pageTotalResults?: number,
+            ) => {
                 try {
                     pagesProcessed += 1;
                     if (!success) {
@@ -81,7 +87,7 @@ export class SearchController {
                         await insertJobResult(
                             searchJobId!,
                             `search:${engineName}:${validatedData.query}:page:${page}`,
-                            { page, query: validatedData.query, results: [] },
+                            { page, query: validatedData.query, totalResults: pageTotalResults, results: [] },
                             JOB_RESULT_STATUS.FAILED
                         );
                     } else {
@@ -134,7 +140,7 @@ export class SearchController {
                         await insertJobResult(
                             searchJobId!,
                             `search:${engineName}:${validatedData.query}:page:${page}`,
-                            { page, query: validatedData.query, results: pageResults },
+                            { page, query: validatedData.query, totalResults: pageTotalResults, results: pageResults },
                             JOB_RESULT_STATUS.SUCCESS
                         );
                     }
@@ -158,7 +164,7 @@ export class SearchController {
                 const urlToScrapeData = new Map<string, any>(successfulScrapes
                     .map(({ url, data }) => [url, data])
                 );
-                for (const r of results as any[]) {
+                for (const r of searchResults as any[]) {
                     if (r && r.url) {
                         const data = urlToScrapeData.get(r.url);
                         if (data) Object.assign(r, data);
@@ -213,7 +219,8 @@ export class SearchController {
             }
             res.json({
                 success: true,
-                data: results,
+                data: searchResults,
+                totalResults,
             });
         } catch (error) {
             if (error instanceof z.ZodError) {
