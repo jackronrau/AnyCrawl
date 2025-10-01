@@ -65,6 +65,11 @@ export class SearchService {
 
                             const engine = this.getEngine(request.userData.engineName);
                             log.info(`HTML content length: ${html.length}`);
+                            const match = html.match(/About\s([\d,]+)\sresults/);
+                            log.debug("Google total results match", {
+                                url: request?.url,
+                                match: match ? match[1] : null,
+                            });
 
                             const results = await engine.parse(html, request);
                             log.info(`Parsed results: ${results.length}`);
